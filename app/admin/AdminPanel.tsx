@@ -41,7 +41,7 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
   }
 
   const handleDone = () => {
-    if (isActionPending || !raceHasStarted) return
+    if (isActionPending) return
     const fd = new FormData()
     fd.set("status", "done")
     startTransition(async () => {
@@ -382,7 +382,7 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
       {/* Race over */}
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
         <button
-          disabled={isActionPending || !raceHasStarted}
+          disabled={isActionPending}
           onClick={handleDone}
           style={{
             width: "100%", minHeight: "52px", padding: "0.75rem",

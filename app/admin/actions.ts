@@ -11,14 +11,6 @@ export async function setStatus(formData: FormData) {
   await requireAdmin()
   const status = formData.get("status") as Enums<"runner_status">
 
-  if (status === "done") {
-    const admin = createAdminClient()
-    const { data: state } = await admin.from("runner_state").select("race_started_at").eq("id", 1).single()
-    if (state && Date.now() < new Date(state.race_started_at).getTime()) {
-      return
-    }
-  }
-
   const admin = createAdminClient()
   await admin
     .from("runner_state")
