@@ -1,4 +1,4 @@
-# Handoff — Sprint 2 abgeschlossen
+# Handoff — Sprint 3 abgeschlossen
 
 ## Projekt
 **Last One Standing Augsburg** — Backyard Ultra Live-Tracker. Freunde verfolgen Kilian in Echtzeit; Crew vor Ort pflegt Daten per Smartphone-Admin-Panel (Sprint 3).
@@ -15,6 +15,16 @@
   - `database.types.ts` — generierte TypeScript-Types für alle Tabellen & Enums
 - **Vercel-Projekt** `ultra-tracker` — Production live: https://ultra-tracker.vercel.app
 - Alle Env-Vars in Vercel gesetzt (Production + Preview + Development)
+
+### Sprint 3 — Admin-Authentifizierung
+- **Auth-Layer** komplett ohne Supabase Auth: `ADMIN_PASSWORD` (env) + signiertes HTTP-Only-Cookie `bua_admin`
+- **`jose` 6.x** für JWT (HS256, 24 h TTL, `SESSION_SECRET`-signiert)
+- **`proxy.ts`** (Next.js 16 Proxy — früher `middleware.ts`): schützt alle `/admin/*`-Routen außer `/admin/login`; bei gültigem Cookie auf Login → Redirect zu `/admin`
+- **API-Route `/api/admin/login`** (POST): timing-safe Compare (`crypto.timingSafeEqual`), Rate-Limit (5 Versuche / 60 s per IP, In-Memory), Cookie setzen
+- **API-Route `/api/admin/logout`** (POST): Cookie löschen → Redirect `/admin/login`
+- **Login-Seite `/admin/login`**: Race-Ops Terminal Stil, Barlow Condensed, fehlerspezifische Messages (`?error=invalid`, `?error=rate_limit`)
+- **Admin-Layout** (`app/admin/layout.tsx`): sticky Header "Crew Panel" + Logout-Button
+- **Stub-Dashboard** `/admin`: Platzhalter für Sprint 4
 
 ### Sprint 2 — Public Live View
 - **Öffentliche Startseite** `/` — vollständig implementiert, kein Admin-Zugang nötig
@@ -61,7 +71,15 @@ ultraTracker/
 ├── app/
 │   ├── globals.css             # Tailwind v4, Dark-Mode-Tokens, --accent #b8ff57
 │   ├── layout.tsx              # Root Layout, lang="de", Barlow Condensed + Geist
-│   └── page.tsx                # Async Server Component — fetcht Initial-Daten, rendert LiveDashboard
+│   ├── page.tsx                # Async Server Component — fetcht Initial-Daten, rendert LiveDashboard
+│   ├── admin/
+│   │   ├── layout.tsx          # Admin-Shell: sticky Header "Crew Panel" + Logout-Form
+│   │   ├── page.tsx            # Stub-Dashboard (Sprint 4)
+│   │   └── login/
+│   │       └── page.tsx        # Login-Formular (POST → /api/admin/login)
+│   └── api/admin/
+│       ├── login/route.ts      # POST: timing-safe compare, rate-limit, JWT-Cookie setzen
+│       └── logout/route.ts     # POST: Cookie löschen, Redirect Login
 ├── components/live/
 │   ├── LiveDashboard.tsx       # 'use client' — Realtime-Hub, hält gesamten State
 │   ├── Hero.tsx                # 100svh Hero: Lap-Zahl, Status, Countdown
@@ -71,14 +89,17 @@ ultraTracker/
 │   └── MessageWall.tsx         # Read-only Nachrichten-Wand
 ├── lib/
 │   ├── config.ts               # Konstanten: RUNNER_NAME, EVENT_NAME, RACE_START_AT, etc.
+│   ├── auth.ts                 # COOKIE_NAME, SESSION_TTL_SECONDS, signSession(), verifySession()
+│   ├── rate-limit.ts           # checkRateLimit(ip): In-Memory Sliding Window (5/60s)
 │   ├── utils/
 │   │   ├── time.ts             # getNextDeadline, formatCountdown, formatDuration
 │   │   └── status.ts           # runner_status → Emoji + Label + Farbe
 │   └── supabase/
 │       ├── client.ts           # createBrowserClient<Database>
 │       ├── server.ts           # createServerClient<Database>
-│       ├── admin.ts            # Service-Role für Admin-Writes
+│       ├── admin.ts            # Service-Role für Admin-Writes (Sprint 4)
 │       └── database.types.ts   # generierte DB-Types
+├── proxy.ts                    # Next.js 16 Proxy: schützt /admin/*, außer /admin/login
 ├── .env.example                # Alle benötigten Var-Namen
 └── SPRINTS.md                  # Vollständiger Sprintplan
 ```
@@ -107,14 +128,13 @@ pnpm dev
 
 ## Nächster Sprint
 
-**Sprint 3 — Admin-Panel** (`/admin`)
-- Passwortschutz via `ADMIN_PASSWORD` + signiertes HTTP-Cookie
-- Runde loggen (1-Tap-Button)
-- Zustand setzen (4 Status-Buttons)
-- Optionales Crew-Notiz-Feld
-- Foto-Upload (1–5 Fotos/Runde, Supabase Storage Bucket `lap-photos`)
-- Smartphone-optimiert
+**Sprint 4 — Admin-UI** (`/admin`)
+- Runde loggen (1-Tap-Button) → INSERT in `laps` via Service-Role (`lib/supabase/admin.ts`)
+- Zustand setzen (4 Status-Buttons: `running` / `resting` / `struggling` / `done`) → UPDATE `runner_state`
+- Optionales Crew-Notiz-Feld (wird an `laps.note` gespeichert)
+- Foto-Upload (1–5 Fotos/Runde, Supabase Storage Bucket `lap-photos`, Pfad `lap-{lap_number}-{timestamp}.jpg`)
+- Smartphone-optimiert (große Touch-Targets, kein Scrollen beim Kernflow)
 
 ## Tech-Stack
 
-Next.js 16 · Tailwind v4 · TypeScript · Supabase (Postgres + Realtime + Storage) · Vercel · pnpm · date-fns · lucide-react · Barlow Condensed (Google Fonts)
+Next.js 16 · Tailwind v4 · TypeScript · Supabase (Postgres + Realtime + Storage) · Vercel · pnpm · jose · date-fns · lucide-react · Barlow Condensed (Google Fonts)
