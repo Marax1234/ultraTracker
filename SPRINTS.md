@@ -15,40 +15,38 @@ Konfigurations-Ständen gearbeitet wird (Trainingsdaten reichen nicht).
 ---
 
 
-## Sprint 3 — Admin-Authentifizierung
 
-**Ziel**: `/admin` ist hinter passwortbasiertem Login. Kein Supabase Auth — nur eine Env-Variable
-und ein signiertes HTTP-Only-Cookie.
+## Sprint 5 — Aktivitätsfeed & Nachrichten-Wand
+
+**Ziel**: Public-View zeigt vollständige Timeline; Freunde können Nachrichten posten, die live erscheinen.
 
 ### Recherche
-- `find-docs`: Next.js Middleware (Edge-Runtime), Cookie-Setzen in API-Routes.
-- `find-docs`: `iron-session` **oder** `jose` (JWT signieren mit `SESSION_SECRET`) — Entscheidung im Sprint.
-- `find-docs`: Best Practices für `httpOnly`, `secure`, `sameSite=strict`, Session-Lifetime.
+- `find-docs`: Supabase Realtime — Filter auf Channels (z. B. nur neue `messages` ab `created_at > now()`).
+- `find-docs`: Form-Validation in Next.js Server Actions, FormData-Pattern.
+- Skill `vercel:vercel-firewall` einlesen (Rate-Limit-Optionen für die Public-Insert-Route).
 
 ### MCPs
-- `plugin:vercel` → Env-Variablen `ADMIN_PASSWORD`, `SESSION_SECRET` in Preview + Production setzen.
+- `plugin:supabase` → `execute_sql` für Spam-Test-Inserts, `get_advisors` zur Re-Validierung der RLS.
 
 ### Skills
-- `vercel:routing-middleware` (Schutz von `/admin/*` per Middleware).
-- `vercel:env-vars` (Secrets korrekt verwalten, niemals `NEXT_PUBLIC_`).
-- `vercel:auth` (Quervergleich mit Marketplace-Auth — bewusst NICHT genutzt im MVP, aber Pattern-Quelle).
+- `frontend-design:frontend-design` (Nachrichten-Wand soll fröhlich/feiernd wirken, nicht wie ein generisches Forum).
+- `vercel:vercel-firewall` (optional WAF-Regel pro IP für `/api/messages`).
+- `vercel:react-best-practices`.
 - `find-docs`.
 
 ### Detailbeschreibung
-- Login-Seite `/admin/login`: Single-Input (Passwort) + Submit-Button.
-- API-Route `/api/admin/login`: Vergleicht plaintext mit `process.env.ADMIN_PASSWORD` (timing-safe Compare). Erfolgreich → setzt signiertes Cookie `bua_admin` (TTL 24 h, HTTP-Only, Secure, SameSite=Strict).
-- API-Route `/api/admin/logout`: Cookie löschen.
-- Middleware `middleware.ts`: Schützt alle `/admin`-Routen (außer `/admin/login`). Kein gültiges Cookie → Redirect zu Login.
-- Rate-Limit-Schutz auf Login-Route: einfacher In-Memory-Counter pro IP (für MVP ausreichend, da Single-User).
-- Logout-Button im Admin-Header.
+- Aktivitätsfeed (aus Sprint 2 erweitert): Jede Runde als Karte mit Rundenzahl, Dauer, Notiz, Foto-Thumbnail (Click → Lightbox). Animation `fade-in slide-up`, wenn neue Runde via Realtime ankommt.
+- Nachrichten-Wand: Eigener Bereich unter dem Feed. Form mit zwei Feldern: Name (max 40), Nachricht (max 280). Button "Anfeuern!".
+- Nach Submit: Optimistisches UI (Nachricht erscheint sofort), Server validiert und persistiert. Bei Fehler: Nachricht entfernen + Toast.
+- Anti-Spam (MVP-Niveau): Honeypot-Feld + Mindest-Delay 5 s seit Pageload + Längen-Validierung serverseitig. Kein CAPTCHA.
+- Anzeige: Letzte 50 Nachrichten, neue oben, mit Zeitstempel ("vor 3 min").
 
 ### Akzeptanzkriterien
-- Falsches Passwort → 401, kein Cookie gesetzt.
-- Richtiges Passwort → Redirect `/admin`, Cookie sichtbar.
-- Direkter Aufruf `/admin` ohne Cookie → Redirect Login.
-- Cookie ablaufen lassen / löschen → Redirect Login.
+- Neue Nachricht erscheint bei allen geöffneten Clients <2 s.
+- Nachricht >280 Zeichen wird abgelehnt (clientseitig + serverseitig).
+- Honeypot ausgefüllt → Insert wird (still) verworfen, kein 400.
 
----
+
 
 
 ## Querschnitt: Skill- & MCP-Nutzungsregeln

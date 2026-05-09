@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Tables } from "@/lib/supabase/database.types"
 import { Hero } from "./Hero"
@@ -21,6 +21,16 @@ export function LiveDashboard({ initial }: { initial: InitialData }) {
     "connecting" | "connected" | "error"
   >("connecting")
 
+  // IDs der initial geladenen Laps — alles Neue davon bekommt die Fly-in-Animation
+  const seenLapIds = useRef(new Set(initial.laps.map((l) => l.id)))
+  const [newLapIds, setNewLapIds] = useState<Set<string>>(new Set())
+
+  function addMessage(msg: Tables<"messages">) {
+    setMessages((prev) =>
+      prev.some((m) => m.id === msg.id) ? prev : [msg, ...prev]
+    )
+  }
+
   useEffect(() => {
     let mounted = true
     const supabase = createClient()
@@ -30,7 +40,12 @@ export function LiveDashboard({ initial }: { initial: InitialData }) {
         .from("photos")
         .select()
         .eq("lap_id", lap.id)
-      if (mounted) setLaps((prev) => [{ ...lap, photos: photos ?? [] }, ...prev])
+      if (!mounted) return
+      setLaps((prev) => [{ ...lap, photos: photos ?? [] }, ...prev])
+      if (!seenLapIds.current.has(lap.id)) {
+        seenLapIds.current.add(lap.id)
+        setNewLapIds((prev) => new Set([...prev, lap.id]))
+      }
     }
 
     const channel = supabase
@@ -63,7 +78,7 @@ export function LiveDashboard({ initial }: { initial: InitialData }) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          setMessages((prev) => [payload.new as Tables<"messages">, ...prev])
+          addMessage(payload.new as Tables<"messages">)
         }
       )
       .subscribe((status) => {
@@ -84,7 +99,6 @@ export function LiveDashboard({ initial }: { initial: InitialData }) {
     }
   }, [])
 
-  // First lap in desc order = the most recent one; its started_at drives the countdown
   const lastStartedAt = laps[0]?.started_at ?? null
 
   return (
@@ -95,8 +109,8 @@ export function LiveDashboard({ initial }: { initial: InitialData }) {
         connectionStatus={connectionStatus}
       />
       <main className="pb-24">
-        <ActivityFeed laps={laps} />
-        <MessageWall messages={messages} />
+        <ActivityFeed laps={laps} newLapIds={newLapIds} />
+        <MessageWall messages={messages} onMessagePosted={addMessage} />
       </main>
     </div>
   )

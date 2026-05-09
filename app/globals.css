@@ -19,3 +19,12 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-slide-up {
+  animation: fadeSlideUp 360ms ease-out both;
+}

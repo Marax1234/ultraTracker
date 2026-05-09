@@ -1,7 +1,7 @@
-# Handoff — Sprint 4 abgeschlossen
+# Handoff — Sprint 5 abgeschlossen
 
 ## Projekt
-**Last One Standing Augsburg** — Backyard Ultra Live-Tracker. Freunde verfolgen Kilian in Echtzeit; Crew vor Ort pflegt Daten per Smartphone-Admin-Panel (Sprint 4 fertig).
+**Last One Standing Augsburg** — Backyard Ultra Live-Tracker. Freunde verfolgen Kilian in Echtzeit; Crew vor Ort pflegt Daten per Smartphone-Admin-Panel. Freunde können Kilian live anfeuern (Sprint 5 fertig).
 
 ## Was fertig ist
 
@@ -33,6 +33,15 @@
 - **Nachrichten-Wand**: Read-only, deutsches Datumsformat (date-fns/locale/de)
 - **Connection-Indikator**: grüner Dot (Live) / gelb bei Verbindungsfehler
 - **Event-Konstanten** in `lib/config.ts`: Runner-Name, Event-Name, Race-Start, Rundenparameter
+
+### Sprint 5 — Aktivitätsfeed & Nachrichten-Wand
+- **`components/live/MessageWall.tsx`** (Client Component, rebuilt): Zeigt Nachrichten + eingebettetes Anfeuern-Formular (Name max 40, Body max 280 mit Live-Counter), optimistisches UI via `useState` + `useTransition`, Toast bei Fehler
+- **`lib/actions/messages.ts`** (neuer Server Action `postMessage`): Honeypot-Check, Mindest-Delay 5 s seit Pageload, serverseitige Längenvalidierung, IP-basiertes Rate-Limit (5/min), anon-INSERT in `messages`, gibt echte DB-Row zurück
+- **`lib/rate-limit.ts`** erweitert: `checkRateLimit(key, opts?)` — parametrisierbar ohne Breaking-Change für admin-login
+- **`components/live/ActivityFeed.tsx`** (Client Component): Foto-Thumbnails öffnen Lightbox (statt `<a target="_blank">`), neue Lap-Karten via Realtime bekommen `animate-fade-slide-up`
+- **`components/live/Lightbox.tsx`** (neu): Fullscreen-Overlay, ESC + Backdrop-Click schließen, X-Button
+- **`components/live/LiveDashboard.tsx`** erweitert: trackt `newLapIds` (Set aller Laps nach Mount), dedupliziert Messages per id, reicht `onMessagePosted`-Callback an MessageWall
+- **`app/globals.css`** erweitert: `@keyframes fadeSlideUp` + `.animate-fade-slide-up`
 
 ### Sprint 4 — Admin-Panel: Runden-Logging, Status, Notiz, Foto-Upload
 - **`app/admin/page.tsx`** (Server Component, `force-dynamic`): lädt `runner_state` + letzten Lap, berechnet `nextLapNumber`, rendert `AdminPanel`

@@ -1,7 +1,11 @@
+"use client"
+
+import { useState } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { de } from "date-fns/locale"
 import { formatDuration } from "@/lib/utils/time"
 import type { Tables } from "@/lib/supabase/database.types"
+import { Lightbox } from "./Lightbox"
 
 export type LapWithPhotos = Tables<"laps"> & { photos: Tables<"photos">[] }
 
@@ -11,12 +15,22 @@ function photoUrl(storagePath: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/lap-photos/${storagePath}`
 }
 
-function LapCard({ lap }: { lap: LapWithPhotos }) {
+type LightboxState = { src: string; alt: string }
+
+function LapCard({
+  lap,
+  isNew,
+  onPhotoClick,
+}: {
+  lap: LapWithPhotos
+  isNew: boolean
+  onPhotoClick: (state: LightboxState) => void
+}) {
   const isActive = !lap.completed_at
 
   return (
     <article
-      className="rounded-r-lg pl-4 pr-4 py-4"
+      className={`rounded-r-lg pl-4 pr-4 py-4${isNew ? " animate-fade-slide-up" : ""}`}
       style={{
         borderLeft: `2px solid ${isActive ? "#b8ff57" : "rgba(255,255,255,0.1)"}`,
         backgroundColor: "rgba(255,255,255,0.028)",
@@ -65,12 +79,16 @@ function LapCard({ lap }: { lap: LapWithPhotos }) {
       {lap.photos.length > 0 && (
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1 -ml-1">
           {lap.photos.map((photo) => (
-            <a
+            <button
               key={photo.id}
-              href={photoUrl(photo.storage_path)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 rounded-md overflow-hidden border border-white/10 hover:border-white/25 transition-colors"
+              type="button"
+              onClick={() =>
+                onPhotoClick({
+                  src: photoUrl(photo.storage_path),
+                  alt: `Foto Runde ${lap.lap_number}`,
+                })
+              }
+              className="shrink-0 rounded-md overflow-hidden border border-white/10 hover:border-white/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -81,7 +99,7 @@ function LapCard({ lap }: { lap: LapWithPhotos }) {
                 className="size-22 object-cover"
                 loading="lazy"
               />
-            </a>
+            </button>
           ))}
         </div>
       )}
@@ -89,7 +107,15 @@ function LapCard({ lap }: { lap: LapWithPhotos }) {
   )
 }
 
-export function ActivityFeed({ laps }: { laps: LapWithPhotos[] }) {
+export function ActivityFeed({
+  laps,
+  newLapIds,
+}: {
+  laps: LapWithPhotos[]
+  newLapIds: Set<string>
+}) {
+  const [lightbox, setLightbox] = useState<LightboxState | null>(null)
+
   if (laps.length === 0) {
     return (
       <section className="px-5 py-14 flex justify-center">
@@ -101,15 +127,30 @@ export function ActivityFeed({ laps }: { laps: LapWithPhotos[] }) {
   }
 
   return (
-    <section className="px-4 sm:px-6 py-8 max-w-2xl mx-auto w-full">
-      <h2 className="text-[9px] tracking-[0.45em] uppercase text-white/25 font-mono mb-5">
-        Aktivitäten
-      </h2>
-      <div className="flex flex-col gap-3">
-        {laps.map((lap) => (
-          <LapCard key={lap.id} lap={lap} />
-        ))}
-      </div>
-    </section>
+    <>
+      <section className="px-4 sm:px-6 py-8 max-w-2xl mx-auto w-full">
+        <h2 className="text-[9px] tracking-[0.45em] uppercase text-white/25 font-mono mb-5">
+          Aktivitäten
+        </h2>
+        <div className="flex flex-col gap-3">
+          {laps.map((lap) => (
+            <LapCard
+              key={lap.id}
+              lap={lap}
+              isNew={newLapIds.has(lap.id)}
+              onPhotoClick={setLightbox}
+            />
+          ))}
+        </div>
+      </section>
+
+      {lightbox && (
+        <Lightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </>
   )
 }

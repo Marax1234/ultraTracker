@@ -1,13 +1,15 @@
-const WINDOW_MS = 60_000 // 1 minute
-const MAX_ATTEMPTS = 5
-
 const attempts = new Map<string, number[]>()
 
-export function checkRateLimit(ip: string): boolean {
+export function checkRateLimit(
+  key: string,
+  opts: { max?: number; windowMs?: number } = {}
+): boolean {
+  const max = opts.max ?? 5
+  const windowMs = opts.windowMs ?? 60_000
   const now = Date.now()
-  const window = (attempts.get(ip) ?? []).filter((t) => now - t < WINDOW_MS)
-  if (window.length >= MAX_ATTEMPTS) return false
+  const window = (attempts.get(key) ?? []).filter((t) => now - t < windowMs)
+  if (window.length >= max) return false
   window.push(now)
-  attempts.set(ip, window)
+  attempts.set(key, window)
   return true
 }
