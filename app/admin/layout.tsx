@@ -54,7 +54,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               background: "none",
               border: "1px solid rgba(255,255,255,0.1)",
               cursor: "pointer",
-              padding: "0.375rem 0.75rem",
+              padding: "0.375rem 0.875rem",
+              minHeight: "44px",
               lineHeight: 1,
             }}
           >

@@ -4,16 +4,11 @@ import { useState } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { de } from "date-fns/locale"
 import { formatDuration } from "@/lib/utils/time"
+import { getThumbUrl, getFullUrl } from "@/lib/utils/storage-image"
 import type { Tables } from "@/lib/supabase/database.types"
 import { Lightbox } from "./Lightbox"
 
 export type LapWithPhotos = Tables<"laps"> & { photos: Tables<"photos">[] }
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
-
-function photoUrl(storagePath: string) {
-  return `${SUPABASE_URL}/storage/v1/object/public/lap-photos/${storagePath}`
-}
 
 type LightboxState = { src: string; alt: string }
 
@@ -82,9 +77,10 @@ function LapCard({
             <button
               key={photo.id}
               type="button"
+              aria-label={`Foto Runde ${lap.lap_number} öffnen`}
               onClick={() =>
                 onPhotoClick({
-                  src: photoUrl(photo.storage_path),
+                  src: getFullUrl(photo.storage_path),
                   alt: `Foto Runde ${lap.lap_number}`,
                 })
               }
@@ -92,12 +88,13 @@ function LapCard({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={photoUrl(photo.storage_path)}
+                src={getThumbUrl(photo.storage_path)}
                 alt={`Foto Runde ${lap.lap_number}`}
                 width={88}
                 height={88}
                 className="size-22 object-cover"
                 loading="lazy"
+                decoding="async"
               />
             </button>
           ))}

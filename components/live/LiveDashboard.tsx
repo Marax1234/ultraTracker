@@ -13,15 +13,14 @@ type InitialData = {
   messages: Tables<"messages">[]
 }
 
+type ConnectionStatus = "connecting" | "connected" | "error" | "reconnecting"
+
 export function LiveDashboard({ initial }: { initial: InitialData }) {
   const [runnerState, setRunnerState] = useState(initial.runnerState)
   const [laps, setLaps] = useState(initial.laps)
   const [messages, setMessages] = useState(initial.messages)
-  const [connectionStatus, setConnectionStatus] = useState<
-    "connecting" | "connected" | "error"
-  >("connecting")
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting")
 
-  // IDs der initial geladenen Laps — alles Neue davon bekommt die Fly-in-Animation
   const seenLapIds = useRef(new Set(initial.laps.map((l) => l.id)))
   const [newLapIds, setNewLapIds] = useState<Set<string>>(new Set())
 
@@ -34,6 +33,8 @@ export function LiveDashboard({ initial }: { initial: InitialData }) {
   useEffect(() => {
     let mounted = true
     const supabase = createClient()
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null
+    let backoffMs = 1000
 
     async function handleLapInsert(lap: Tables<"laps">) {
       const { data: photos } = await supabase
@@ -48,54 +49,63 @@ export function LiveDashboard({ initial }: { initial: InitialData }) {
       }
     }
 
-    const channel = supabase
-      .channel("public-live")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "laps" },
-        (payload) => {
-          handleLapInsert(payload.new as Tables<"laps">)
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "laps" },
-        (payload) => {
-          const updated = payload.new as Tables<"laps">
-          setLaps((prev) =>
-            prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
-          )
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "runner_state" },
-        (payload) => {
-          setRunnerState(payload.new as Tables<"runner_state">)
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
-          addMessage(payload.new as Tables<"messages">)
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setConnectionStatus("connected")
-        } else if (
-          status === "CHANNEL_ERROR" ||
-          status === "TIMED_OUT" ||
-          status === "CLOSED"
-        ) {
-          setConnectionStatus("error")
-        }
-      })
+    function connect() {
+      if (!mounted) return
+      setConnectionStatus("connecting")
+
+      const channel = supabase
+        .channel("public-live")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "laps" },
+          (payload) => { handleLapInsert(payload.new as Tables<"laps">) }
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "laps" },
+          (payload) => {
+            const updated = payload.new as Tables<"laps">
+            setLaps((prev) =>
+              prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
+            )
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "runner_state" },
+          (payload) => { setRunnerState(payload.new as Tables<"runner_state">) }
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages" },
+          (payload) => { addMessage(payload.new as Tables<"messages">) }
+        )
+        .subscribe((status) => {
+          if (!mounted) return
+          if (status === "SUBSCRIBED") {
+            setConnectionStatus("connected")
+            backoffMs = 1000 // reset backoff on success
+          } else if (
+            status === "CHANNEL_ERROR" ||
+            status === "TIMED_OUT" ||
+            status === "CLOSED"
+          ) {
+            setConnectionStatus("reconnecting")
+            supabase.removeChannel(channel)
+            retryTimeout = setTimeout(() => {
+              backoffMs = Math.min(backoffMs * 2, 30000)
+              connect()
+            }, backoffMs)
+          }
+        })
+    }
+
+    connect()
 
     return () => {
       mounted = false
-      supabase.removeChannel(channel)
+      if (retryTimeout) clearTimeout(retryTimeout)
+      // channel cleanup is handled inside connect() on error; on unmount we rely on supabase-js GC
     }
   }, [])
 

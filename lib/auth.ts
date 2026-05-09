@@ -34,4 +34,13 @@ export async function requireAdmin(): Promise<void> {
   if (!token || !(await verifySession(token))) {
     redirect("/admin/login")
   }
+  // Sliding session: renew TTL on every authenticated server action
+  const newToken = await signSession()
+  cookieStore.set(COOKIE_NAME, newToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: SESSION_TTL_SECONDS,
+    path: "/",
+  })
 }

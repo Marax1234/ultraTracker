@@ -7,6 +7,7 @@ interface Props {
 export default async function LoginPage({ searchParams }: Props) {
   const params = await searchParams
   const error = params.error as string | undefined
+  const from = (params.from as string | undefined)?.startsWith("/admin") ? (params.from as string) : "/admin"
 
   const errorMessage =
     error === "invalid"
@@ -92,6 +93,9 @@ export default async function LoginPage({ searchParams }: Props) {
         )}
 
         <form method="POST" action="/api/admin/login" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* Pass the redirect target so login API can send user back */}
+          <input type="hidden" name="from" value={from} />
+
           <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
             <label
               htmlFor="password"

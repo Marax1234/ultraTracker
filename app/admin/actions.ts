@@ -54,17 +54,24 @@ export async function logLap(formData: FormData): Promise<LogLapResult> {
   const lap_number = (prevLap?.lap_number ?? 0) + 1
   const raceStartMs = Date.parse(state.race_started_at)
   const started_at = new Date(raceStartMs + (lap_number - 1) * 3600 * 1000).toISOString()
-  const completed_at = new Date().toISOString()
   const note = (formData.get("note") as string | null)?.trim() || null
 
+  // completed_at omitted — DB DEFAULT now() is the source of truth for server time
   const { data: lap, error: lapError } = await admin
     .from("laps")
-    .insert({ lap_number, started_at, completed_at, note })
+    .insert({ lap_number, started_at, note })
     .select("id")
     .single()
 
-  if (lapError || !lap) {
-    return { error: lapError?.message ?? "Lap-Insert fehlgeschlagen" }
+  if (lapError) {
+    // UNIQUE constraint violation = concurrent duplicate tap
+    if (lapError.code === "23505") {
+      return { error: `Runde ${lap_number} wurde bereits geloggt` }
+    }
+    return { error: lapError.message }
+  }
+  if (!lap) {
+    return { error: "Lap-Insert fehlgeschlagen" }
   }
 
   await admin
@@ -73,27 +80,23 @@ export async function logLap(formData: FormData): Promise<LogLapResult> {
     .eq("id", 1)
 
   const photoFiles = formData.getAll("photos") as File[]
-  const photoErrors: string[] = []
 
-  for (let idx = 0; idx < photoFiles.length; idx++) {
-    const file = photoFiles[idx]
-    if (!file || file.size === 0) continue
+  // Upload all photos in parallel; individual failures don't abort the lap
+  const uploadResults = await Promise.all(
+    photoFiles.map(async (file, idx) => {
+      if (!file || file.size === 0) return null
+      const path = `lap-${lap_number}-${Date.now()}-${idx}.jpg`
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const { error: uploadError } = await admin.storage
+        .from("lap-photos")
+        .upload(path, buffer, { contentType: "image/jpeg", upsert: false })
+      if (uploadError) return `Foto ${idx + 1}: ${uploadError.message}`
+      await admin.from("photos").insert({ lap_id: lap.id, storage_path: path })
+      return null
+    })
+  )
 
-    const path = `lap-${lap_number}-${Date.now()}-${idx}.jpg`
-    const buffer = Buffer.from(await file.arrayBuffer())
-
-    const { error: uploadError } = await admin.storage
-      .from("lap-photos")
-      .upload(path, buffer, { contentType: "image/jpeg", upsert: false })
-
-    if (uploadError) {
-      photoErrors.push(`Foto ${idx + 1}: ${uploadError.message}`)
-      continue
-    }
-
-    await admin.from("photos").insert({ lap_id: lap.id, storage_path: path })
-  }
-
+  const photoErrors = uploadResults.filter((r): r is string => r !== null)
   revalidatePath("/admin")
   return photoErrors.length > 0 ? { photoErrors } : {}
 }

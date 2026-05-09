@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
 
   const formData = await req.formData()
   const password = String(formData.get("password") ?? "")
+  const from = String(formData.get("from") ?? "/admin")
 
   const expected = process.env.ADMIN_PASSWORD ?? ""
   const passwordBuf = Buffer.from(password)
@@ -29,7 +30,9 @@ export async function POST(req: NextRequest) {
   const token = await signSession()
   const isProduction = process.env.NODE_ENV === "production"
 
-  const response = NextResponse.redirect(new URL("/admin", req.url), 303)
+  // Redirect back to the page that triggered re-login (whitelist: /admin/* only)
+  const redirectTarget = from.startsWith("/admin") ? from : "/admin"
+  const response = NextResponse.redirect(new URL(redirectTarget, req.url), 303)
   response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: isProduction,

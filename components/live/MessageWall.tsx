@@ -117,8 +117,8 @@ export function MessageWall({
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-lg py-3.5 text-sm font-bold tracking-widest uppercase transition-opacity disabled:opacity-50"
-          style={{ backgroundColor: "#b8ff57", color: "#0a0a0a" }}
+          className="w-full rounded-lg text-sm font-bold tracking-widest uppercase transition-opacity disabled:opacity-50"
+          style={{ backgroundColor: "#b8ff57", color: "#0a0a0a", minHeight: "56px", padding: "0.875rem 1rem" }}
         >
           {isPending ? "Sendet…" : "Anfeuern!"}
         </button>

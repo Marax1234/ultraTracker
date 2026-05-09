@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono, Barlow_Condensed } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -36,7 +38,17 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground flex flex-col">
-        {children}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-accent focus:text-black focus:rounded focus:text-sm focus:font-bold"
+        >
+          Zum Inhalt springen
+        </a>
+        <div id="main-content" className="flex flex-col flex-1">
+          {children}
+        </div>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

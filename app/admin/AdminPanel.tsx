@@ -31,6 +31,8 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
   const fileInputRef = useRef<HTMLInputElement>(null)
   const noteRef = useRef<HTMLTextAreaElement>(null)
   const raceStartInputRef = useRef<HTMLInputElement>(null)
+  // Guards against double-tap during async photo compression (before isPending is set)
+  const submittingRef = useRef(false)
 
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message })
@@ -38,6 +40,7 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
   }
 
   const handleStatusTap = (status: RunnerStatus) => {
+    if (isPending || submittingRef.current) return
     setOptimisticStatus(status)
     const fd = new FormData()
     fd.set("status", status)
@@ -49,41 +52,52 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
 
   const handleLogLap = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isPending) return
+    if (isPending || submittingRef.current) return
+    submittingRef.current = true
 
     const note = noteRef.current?.value?.trim() ?? ""
     const fd = new FormData()
     if (note) fd.set("note", note)
 
-    for (const file of selectedFiles) {
-      try {
-        const compressed = await compressPhoto(file)
-        fd.append("photos", compressed, file.name)
-      } catch {
-        fd.append("photos", file, file.name)
+    try {
+      for (const file of selectedFiles) {
+        try {
+          const compressed = await compressPhoto(file)
+          fd.append("photos", compressed, file.name)
+        } catch {
+          fd.append("photos", file, file.name)
+        }
       }
+    } finally {
+      // Only reset if startTransition doesn't take over
+      // (startTransition will keep submittingRef=true until resolved below)
     }
 
     startTransition(async () => {
-      const result = await logLap(fd)
-      if (result.error) {
-        showToast("error", result.error)
-      } else {
-        const lapNum = optimisticLap
-        if (noteRef.current) noteRef.current.value = ""
-        setSelectedFiles([])
-        if (fileInputRef.current) fileInputRef.current.value = ""
-        setOptimisticLap(lapNum + 1)
-        const msg = result.photoErrors?.length
-          ? `Runde ${lapNum} ✓ — ${result.photoErrors.length} Foto-Fehler`
-          : `Runde ${lapNum} abgeschlossen ✓`
-        showToast(result.photoErrors?.length ? "error" : "success", msg)
+      try {
+        const result = await logLap(fd)
+        if (result.error) {
+          showToast("error", result.error)
+        } else {
+          const lapNum = optimisticLap
+          if (noteRef.current) noteRef.current.value = ""
+          setSelectedFiles([])
+          if (fileInputRef.current) fileInputRef.current.value = ""
+          setOptimisticLap(lapNum + 1)
+          const msg = result.photoErrors?.length
+            ? `Runde ${lapNum} ✓ — ${result.photoErrors.length} Foto-Fehler`
+            : `Runde ${lapNum} abgeschlossen ✓`
+          showToast(result.photoErrors?.length ? "error" : "success", msg)
+        }
+      } finally {
+        submittingRef.current = false
       }
     })
   }
 
   const handleRaceStart = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (isPending || submittingRef.current) return
     const fd = new FormData(e.currentTarget)
     const raw = fd.get("race_started_at") as string
     const newIso = new Date(raw).toISOString()
@@ -100,6 +114,8 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
     setSelectedFiles(files)
   }
 
+  const isDisabled = isPending || submittingRef.current
+
   const raceStartDisplay = new Date(optimisticRaceStart).toLocaleString("de-DE", {
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
   })
@@ -109,17 +125,21 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", maxWidth: "420px", margin: "0 auto" }}>
 
-      {/* Toast */}
+      {/* Toast — role for screen readers */}
       {toast && (
-        <div style={{
-          position: "fixed", top: "3.75rem", left: "50%", transform: "translateX(-50%)",
-          padding: "0.625rem 1.25rem", borderRadius: "0.375rem", zIndex: 100,
-          background: toast.type === "success" ? "#14532d" : "#7f1d1d",
-          border: `1px solid ${toast.type === "success" ? "#4ade80" : "#f87171"}`,
-          color: "#fff", fontFamily: "var(--font-display)", fontSize: "0.95rem",
-          fontWeight: 700, letterSpacing: "0.03em", whiteSpace: "nowrap",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
-        }}>
+        <div
+          role={toast.type === "error" ? "alert" : "status"}
+          aria-live={toast.type === "error" ? "assertive" : "polite"}
+          style={{
+            position: "fixed", top: "3.75rem", left: "50%", transform: "translateX(-50%)",
+            padding: "0.625rem 1.25rem", borderRadius: "0.375rem", zIndex: 100,
+            background: toast.type === "success" ? "#14532d" : "#7f1d1d",
+            border: `1px solid ${toast.type === "success" ? "#4ade80" : "#f87171"}`,
+            color: "#fff", fontFamily: "var(--font-display)", fontSize: "0.95rem",
+            fontWeight: 700, letterSpacing: "0.03em", whiteSpace: "nowrap",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+          }}
+        >
           {toast.message}
         </div>
       )}
@@ -137,7 +157,7 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
             return (
               <button
                 key={status}
-                disabled={isPending}
+                disabled={isDisabled}
                 onClick={() => handleStatusTap(status)}
                 style={{
                   display: "flex", flexDirection: "column", alignItems: "center",
@@ -145,12 +165,12 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
                   minHeight: "64px", padding: "0.75rem",
                   background: active ? "rgba(184,255,87,0.07)" : "rgba(255,255,255,0.03)",
                   border: `2px solid ${active ? info.color : "rgba(255,255,255,0.08)"}`,
-                  borderRadius: "0.5rem", cursor: isPending ? "not-allowed" : "pointer",
+                  borderRadius: "0.5rem", cursor: isDisabled ? "not-allowed" : "pointer",
                   transition: "border-color 0.15s, background 0.15s",
                   WebkitTapHighlightColor: "transparent",
                 }}
               >
-                <span style={{ fontSize: "1.625rem", lineHeight: 1 }}>{info.emoji}</span>
+                <span style={{ fontSize: "1.625rem", lineHeight: 1 }} aria-hidden="true">{info.emoji}</span>
                 <span style={{
                   fontFamily: "var(--font-display)", fontSize: "0.75rem", fontWeight: 700,
                   letterSpacing: "0.06em", textTransform: "uppercase", color: active ? info.color : "var(--foreground)",
@@ -188,13 +208,14 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
             accept="image/*"
             capture="environment"
             onChange={handleFileChange}
+            aria-label="Bis zu 5 Fotos der Runde hinzufügen"
             style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
           />
           <label
             htmlFor="photo-input"
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-              padding: "0.75rem", width: "100%", boxSizing: "border-box",
+              padding: "0.75rem", width: "100%", boxSizing: "border-box", minHeight: "56px",
               background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: "0.375rem", cursor: "pointer",
               fontFamily: "var(--font-display)", fontSize: "0.85rem", fontWeight: 700,
@@ -202,7 +223,7 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
               color: selectedFiles.length > 0 ? "var(--accent)" : "rgba(255,255,255,0.4)",
             }}
           >
-            📷{" "}
+            <span aria-hidden="true">📷</span>{" "}
             {selectedFiles.length > 0
               ? `${selectedFiles.length} Foto${selectedFiles.length > 1 ? "s" : ""} gewählt`
               : "Fotos hinzufügen (max. 5)"}
@@ -212,12 +233,12 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
         {/* Submit */}
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isDisabled}
           style={{
             width: "100%", minHeight: "68px", padding: "1rem",
-            background: isPending ? "rgba(184,255,87,0.25)" : "var(--accent)",
+            background: isDisabled ? "rgba(184,255,87,0.25)" : "var(--accent)",
             border: "none", borderRadius: "0.5rem",
-            cursor: isPending ? "not-allowed" : "pointer",
+            cursor: isDisabled ? "not-allowed" : "pointer",
             fontFamily: "var(--font-display)",
             fontSize: "clamp(1.1rem, 5vw, 1.4rem)",
             fontWeight: 900, fontStyle: "italic", letterSpacing: "0.04em",
@@ -226,7 +247,7 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          {isPending ? "⏳ Wird gespeichert …" : `Runde ${optimisticLap} abschließen`}
+          {isDisabled ? "⏳ Wird gespeichert …" : `Runde ${optimisticLap} abschließen`}
         </button>
       </form>
 
@@ -235,7 +256,8 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
         <button
           onClick={() => setShowRaceStart(v => !v)}
           style={{
-            background: "none", border: "none", cursor: "pointer", padding: 0,
+            background: "none", border: "none", cursor: "pointer",
+            padding: "0.5rem 0", minHeight: "44px",
             fontFamily: "var(--font-display)", fontSize: "0.65rem", fontWeight: 700,
             letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)",
             display: "flex", alignItems: "center", gap: "0.35rem",
@@ -260,12 +282,12 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
             />
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isDisabled}
               style={{
-                padding: "0.5rem 0.875rem",
+                minHeight: "56px", padding: "0.5rem 0.875rem",
                 background: "rgba(255,255,255,0.07)",
                 border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0.375rem",
-                cursor: isPending ? "not-allowed" : "pointer",
+                cursor: isDisabled ? "not-allowed" : "pointer",
                 fontFamily: "var(--font-display)", fontSize: "0.75rem",
                 fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
                 color: "var(--foreground)",

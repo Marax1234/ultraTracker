@@ -11,6 +11,8 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.3",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.1.0",
     "jose": "^6.2.3",

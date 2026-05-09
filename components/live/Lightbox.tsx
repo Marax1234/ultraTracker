@@ -26,12 +26,14 @@ export function Lightbox({ src, alt, onClose }: Props) {
       aria-modal="true"
       aria-label={alt}
     >
+      {/* 56×56 hit area for touch targets */}
       <button
-        className="absolute top-4 right-4 p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+        className="absolute top-3 right-3 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        style={{ width: 56, height: 56 }}
         onClick={onClose}
         aria-label="Schließen"
       >
-        <X size={22} />
+        <X size={24} />
       </button>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

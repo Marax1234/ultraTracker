@@ -9,7 +9,9 @@ export async function proxy(req: NextRequest) {
   const authenticated = token ? await verifySession(token) : false
 
   if (!isLoginPage && !authenticated) {
-    return NextResponse.redirect(new URL("/admin/login", req.url))
+    const loginUrl = new URL("/admin/login", req.url)
+    loginUrl.searchParams.set("from", pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   if (isLoginPage && authenticated) {

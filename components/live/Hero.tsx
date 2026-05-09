@@ -7,7 +7,7 @@ import type { Tables } from "@/lib/supabase/database.types"
 type Props = {
   runnerState: Tables<"runner_state"> | null
   lastStartedAt: string | null
-  connectionStatus: "connecting" | "connected" | "error"
+  connectionStatus: "connecting" | "connected" | "error" | "reconnecting"
 }
 
 export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {

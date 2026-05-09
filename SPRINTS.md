@@ -14,37 +14,52 @@ Konfigurations-Ständen gearbeitet wird (Trainingsdaten reichen nicht).
 
 ---
 
+## Sprint 6 — Polish, Mobile-Hardening, Edge Cases
 
-
-## Sprint 5 — Aktivitätsfeed & Nachrichten-Wand
-
-**Ziel**: Public-View zeigt vollständige Timeline; Freunde können Nachrichten posten, die live erscheinen.
+**Ziel**: Race-Day-tauglich. Alles, was auf einem Smartphone der Crew bei Sonne, mäßigem Empfang
+und Zeitdruck schiefgehen könnte, ist abgefedert.
 
 ### Recherche
-- `find-docs`: Supabase Realtime — Filter auf Channels (z. B. nur neue `messages` ab `created_at > now()`).
-- `find-docs`: Form-Validation in Next.js Server Actions, FormData-Pattern.
-- Skill `vercel:vercel-firewall` einlesen (Rate-Limit-Optionen für die Public-Insert-Route).
+- `find-docs`: Service Worker / Offline-Verhalten in Next.js (sollen Inserts gequeued werden bei Empfangsverlust?).
+- `find-docs`: Web Vitals & Largest Contentful Paint für Hero-Komponenten.
+- Skill `vercel:performance-optimizer` durchgehen.
 
 ### MCPs
-- `plugin:supabase` → `execute_sql` für Spam-Test-Inserts, `get_advisors` zur Re-Validierung der RLS.
+- `plugin:vercel` → `list_deployments`, `get_deployment_build_logs`, `get_runtime_logs` (Production-Logs vor Go-Live prüfen).
+- `plugin:supabase` → `get_advisors` (final), `get_logs` (Storage + Postgres).
 
 ### Skills
-- `frontend-design:frontend-design` (Nachrichten-Wand soll fröhlich/feiernd wirken, nicht wie ein generisches Forum).
-- `vercel:vercel-firewall` (optional WAF-Regel pro IP für `/api/messages`).
+- `vercel:performance-optimizer` (Bilder, Fonts, Bundle-Größe, Edge-Caching).
+- `vercel:verification` (End-to-End-Story durchspielen: Tap → API → DB → Realtime → Public-View).
 - `vercel:react-best-practices`.
+- `simplify` (Codebase-Refactor, ungenutzte Pfade entfernen).
 - `find-docs`.
 
 ### Detailbeschreibung
-- Aktivitätsfeed (aus Sprint 2 erweitert): Jede Runde als Karte mit Rundenzahl, Dauer, Notiz, Foto-Thumbnail (Click → Lightbox). Animation `fade-in slide-up`, wenn neue Runde via Realtime ankommt.
-- Nachrichten-Wand: Eigener Bereich unter dem Feed. Form mit zwei Feldern: Name (max 40), Nachricht (max 280). Button "Anfeuern!".
-- Nach Submit: Optimistisches UI (Nachricht erscheint sofort), Server validiert und persistiert. Bei Fehler: Nachricht entfernen + Toast.
-- Anti-Spam (MVP-Niveau): Honeypot-Feld + Mindest-Delay 5 s seit Pageload + Längen-Validierung serverseitig. Kein CAPTCHA.
-- Anzeige: Letzte 50 Nachrichten, neue oben, mit Zeitstempel ("vor 3 min").
+- **Edge Cases**:
+  - Crew tappt zweimal "Runde abschließen" → kein Duplikat (DB-Unique-Constraint auf `lap_number` + UI-Disable).
+  - Foto-Upload schlägt fehl → Runde wird trotzdem geloggt (Foto ist optional), Toast informiert.
+  - Realtime-Connection bricht ab → automatischer Reconnect mit Backoff, gelbe Statusleiste.
+  - Cookie-Session läuft mitten im Race ab → Re-Login ohne Datenverlust (Notiz/Foto bleibt im State).
+  - Falsche Systemzeit auf Crew-Phone → Server `now()` ist Source of Truth, nicht Client-Zeit.
+- **Performance**:
+  - Foto-Thumbnails als Storage-Transform (`?width=400`).
+  - Hero-Statik mit ISR/PPR; Realtime-Layer rein clientseitig.
+  - Fonts: System-Stack oder ein einziges variables Font, lokal eingebunden, kein Layout-Shift.
+- **Accessibility**:
+  - Touch-Targets ≥56px, Kontrast WCAG AA, keine reinen Emoji-Buttons (immer Label dazu).
+  - `prefers-reduced-motion` respektieren.
+- **Telemetrie**:
+  - Vercel Analytics aktivieren, Speed Insights aktivieren.
+  - Error-Boundary auf Admin-Routes mit klarer Fehlermeldung.
 
 ### Akzeptanzkriterien
-- Neue Nachricht erscheint bei allen geöffneten Clients <2 s.
-- Nachricht >280 Zeichen wird abgelehnt (clientseitig + serverseitig).
-- Honeypot ausgefüllt → Insert wird (still) verworfen, kein 400.
+- Vercel-Preview gegen DevTools-Throttle "Slow 4G" + "Mid-tier mobile": LCP < 2,5 s.
+- Komplettes Race von Lap 1 bis Lap 5 als Trockenübung mit zwei Geräten gleichzeitig (Crew + Zuschauer) ohne Realtime-Aussetzer.
+- `vercel:verification` läuft sauber durch.
+
+---
+
 
 
 

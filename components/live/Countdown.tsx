@@ -39,7 +39,7 @@ export function Countdown({ lastStartedAt }: { lastStartedAt: string | null }) {
       </p>
       <span
         style={{ color, fontVariantNumeric: "tabular-nums" }}
-        className={`font-mono text-5xl sm:text-6xl font-bold tracking-tight ${isPulsing ? "animate-pulse" : ""}`}
+        className={`font-mono text-5xl sm:text-6xl font-bold tracking-tight ${isPulsing ? "motion-safe:animate-pulse" : ""}`}
       >
         {formatCountdown(remaining)}
       </span>

@@ -9,7 +9,7 @@ export default async function Home() {
 
   const [{ data: runnerState }, { data: lapsData }, { data: messages }] =
     await Promise.all([
-      supabase.from("runner_state").select().limit(1).single(),
+      supabase.from("runner_state").select().limit(1).maybeSingle(),
       supabase
         .from("laps")
         .select()
