@@ -35,19 +35,19 @@ export function MilestoneProgress({ lapNumber }: { lapNumber: number }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "7px" }}>
         <span style={{
           fontFamily: "var(--font-mono, monospace)",
-          fontSize: "8px",
-          letterSpacing: "0.38em",
+          fontSize: "10px",
+          letterSpacing: "0.3em",
           textTransform: "uppercase",
-          color: done ? "rgba(184,255,87,0.5)" : "rgba(255,255,255,0.2)",
+          color: done ? "rgba(184,255,87,0.65)" : "rgba(255,255,255,0.4)",
         }}>
           Tag 1 · 24 Runden
         </span>
         <span style={{
           fontFamily: "var(--font-mono, monospace)",
-          fontSize: "8px",
-          letterSpacing: "0.38em",
+          fontSize: "10px",
+          letterSpacing: "0.3em",
           textTransform: "uppercase",
-          color: done ? "rgba(184,255,87,0.5)" : "rgba(255,255,255,0.2)",
+          color: done ? "rgba(184,255,87,0.65)" : "rgba(255,255,255,0.4)",
         }}>
           100 Meilen
         </span>
@@ -122,21 +122,21 @@ export function MilestoneProgress({ lapNumber }: { lapNumber: number }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "7px" }}>
         <span style={{
           fontFamily: "var(--font-mono, monospace)",
-          fontSize: "9px",
+          fontSize: "11px",
           letterSpacing: "0.12em",
-          color: done ? "rgba(184,255,87,0.7)" : "rgba(184,255,87,0.45)",
+          color: done ? "rgba(184,255,87,0.85)" : "rgba(184,255,87,0.6)",
           fontWeight: 700,
         }}>
           {lapNumber}&thinsp;/&thinsp;{TARGET_LAPS}
-          <span style={{ opacity: 0.55, marginLeft: "0.45em", fontWeight: 400 }}>
+          <span style={{ opacity: 0.65, marginLeft: "0.45em", fontWeight: 400 }}>
             {pct.toFixed(pct < 10 ? 1 : 0)}%
           </span>
         </span>
         <span style={{
           fontFamily: "var(--font-mono, monospace)",
-          fontSize: "9px",
+          fontSize: "11px",
           letterSpacing: "0.12em",
-          color: "rgba(255,255,255,0.18)",
+          color: "rgba(255,255,255,0.35)",
         }}>
           {totalMiles.toFixed(1)}&thinsp;mi&ensp;·&ensp;{totalKm.toFixed(1)}&thinsp;km
         </span>
