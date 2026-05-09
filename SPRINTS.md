@@ -15,52 +15,41 @@ Konfigurations-Ständen gearbeitet wird (Trainingsdaten reichen nicht).
 ---
 
 
-## Sprint 1 — Datenmodell & RLS
+## Sprint 3 — Admin-Authentifizierung
 
-**Ziel**: Vollständiges, getestetes DB-Schema in Supabase. Noch keine UI-Bindung.
+**Ziel**: `/admin` ist hinter passwortbasiertem Login. Kein Supabase Auth — nur eine Env-Variable
+und ein signiertes HTTP-Only-Cookie.
 
 ### Recherche
-- `find-docs`: PostgreSQL — Constraint-Best-Practices, Indizes für Realtime-Workloads.
-- `find-docs`: Supabase RLS (Row Level Security) Policies für public-readable / admin-writable Tabellen.
-- `find-docs`: Supabase Realtime — welche Tabellen brauchen `replica identity full`?
+- `find-docs`: Next.js Middleware (Edge-Runtime), Cookie-Setzen in API-Routes.
+- `find-docs`: `iron-session` **oder** `jose` (JWT signieren mit `SESSION_SECRET`) — Entscheidung im Sprint.
+- `find-docs`: Best Practices für `httpOnly`, `secure`, `sameSite=strict`, Session-Lifetime.
 
 ### MCPs
-- `plugin:supabase` → `list_tables` (Ist-Stand prüfen), `apply_migration` (Schema in Versionen anwenden), `get_advisors` (Security-/Performance-Hinweise einholen), `execute_sql` (Test-Daten + Verifikation).
+- `plugin:vercel` → Env-Variablen `ADMIN_PASSWORD`, `SESSION_SECRET` in Preview + Production setzen.
 
 ### Skills
-- `supabase:supabase` (Migration-Workflow, RLS-Patterns).
-- `supabase:supabase-postgres-best-practices` (Index-/Schema-Empfehlungen — Pflicht!).
+- `vercel:routing-middleware` (Schutz von `/admin/*` per Middleware).
+- `vercel:env-vars` (Secrets korrekt verwalten, niemals `NEXT_PUBLIC_`).
+- `vercel:auth` (Quervergleich mit Marketplace-Auth — bewusst NICHT genutzt im MVP, aber Pattern-Quelle).
 - `find-docs`.
 
 ### Detailbeschreibung
-Tabellen (Endkonzept, Migrationen einzeln):
-- `laps`: id, lap_number (int unique), started_at, completed_at, duration_seconds, note (text nullable), photo_url (text nullable), created_at.
-- `runner_state`: Single-Row-Tabelle (id check = 1) mit current_status (enum: `running`/`resting`/`struggling`/`done`), current_lap, updated_at.
-- `messages`: id, author_name (max 40 Zeichen), body (max 280 Zeichen), created_at.
-- `photos` (optional als eigene Tabelle, wenn 1:n nötig — sonst nur `photo_url` in `laps`).
-
-RLS-Policies:
-- `laps`, `runner_state`, `messages` → SELECT für `anon`.
-- INSERT/UPDATE/DELETE nur via Service-Role (Admin-API-Routes).
-- `messages` → INSERT für `anon` mit Rate-Limit-Vorbereitung (per-IP-Tabelle oder Edge-Function später; im MVP nur Längenprüfung).
-
-Storage:
-- Public Bucket `lap-photos` (read public, write nur Service-Role).
-- Pfad-Konvention: `lap-{lap_number}-{timestamp}.jpg`.
-
-Realtime:
-- Replication aktivieren für `laps`, `runner_state`, `messages`.
+- Login-Seite `/admin/login`: Single-Input (Passwort) + Submit-Button.
+- API-Route `/api/admin/login`: Vergleicht plaintext mit `process.env.ADMIN_PASSWORD` (timing-safe Compare). Erfolgreich → setzt signiertes Cookie `bua_admin` (TTL 24 h, HTTP-Only, Secure, SameSite=Strict).
+- API-Route `/api/admin/logout`: Cookie löschen.
+- Middleware `middleware.ts`: Schützt alle `/admin`-Routen (außer `/admin/login`). Kein gültiges Cookie → Redirect zu Login.
+- Rate-Limit-Schutz auf Login-Route: einfacher In-Memory-Counter pro IP (für MVP ausreichend, da Single-User).
+- Logout-Button im Admin-Header.
 
 ### Akzeptanzkriterien
-- `get_advisors` meldet keine Security-Findings.
-- Manuelle SELECTs als Anon liefern Daten; INSERTs als Anon werden abgewiesen (außer `messages`).
-- Storage-Upload via Service-Role funktioniert; Public-URL ist abrufbar.
+- Falsches Passwort → 401, kein Cookie gesetzt.
+- Richtiges Passwort → Redirect `/admin`, Cookie sichtbar.
+- Direkter Aufruf `/admin` ohne Cookie → Redirect Login.
+- Cookie ablaufen lassen / löschen → Redirect Login.
 
 ---
 
-
-
----
 
 ## Querschnitt: Skill- & MCP-Nutzungsregeln
 

@@ -1,19 +1,29 @@
-# Handoff — Sprint 1 abgeschlossen
+# Handoff — Sprint 2 abgeschlossen
 
 ## Projekt
-Backyard Ultra Live-Tracker für Augsburg. Freunde verfolgen einen Läufer in Echtzeit; Crew vor Ort pflegt Daten per Smartphone-Admin-Panel.
+**Last One Standing Augsburg** — Backyard Ultra Live-Tracker. Freunde verfolgen Kilian in Echtzeit; Crew vor Ort pflegt Daten per Smartphone-Admin-Panel (Sprint 3).
 
 ## Was fertig ist
 
+### Sprint 1 — Infrastruktur
 - **Next.js 16** (App Router, TypeScript, Turbopack) + **Tailwind CSS v4** (`@import "tailwindcss"`, Dark Mode als Default via CSS Custom Properties)
-- **Supabase-Projekt** `ultratracker`, Region `eu-central-1` (Frankfurt) — **vollständiges Schema live**
-- **Supabase-Client-Skeleton** in `lib/supabase/`:
-  - `client.ts` — Browser (`createBrowserClient`)
-  - `server.ts` — Server Components / Route Handlers (`createServerClient` + Cookie-Bridge)
+- **Supabase-Projekt** `ultratracker`, Region `eu-central-1` (Frankfurt) — vollständiges Schema live
+- **Supabase-Clients** typisiert mit `<Database>`-Generic in `lib/supabase/`:
+  - `client.ts` — Browser (`createBrowserClient<Database>`)
+  - `server.ts` — Server Components / Route Handlers (`createServerClient<Database>` + Cookie-Bridge)
   - `admin.ts` — Service-Role für Admin-Writes
-  - `database.types.ts` — **neu**: generierte TypeScript-Types für alle Tabellen & Enums
+  - `database.types.ts` — generierte TypeScript-Types für alle Tabellen & Enums
 - **Vercel-Projekt** `ultra-tracker` — Production live: https://ultra-tracker.vercel.app
 - Alle Env-Vars in Vercel gesetzt (Production + Preview + Development)
+
+### Sprint 2 — Public Live View
+- **Öffentliche Startseite** `/` — vollständig implementiert, kein Admin-Zugang nötig
+- **Realtime** via Supabase `postgres_changes` — Updates in `laps`, `runner_state`, `messages` erscheinen < 2 s ohne Reload
+- **Hero** (100 svh, Dark Mode): riesige Lap-Zahl (Barlow Condensed Black Italic), Status-Emoji, sekundengenauer Countdown mit Ampelfarben (grün/gelb/rot)
+- **Activity Feed**: alle Runden chronologisch absteigend, Dauer, optionale Notiz, Foto-Thumbnails
+- **Nachrichten-Wand**: Read-only, deutsches Datumsformat (date-fns/locale/de)
+- **Connection-Indikator**: grüner Dot (Live) / gelb bei Verbindungsfehler
+- **Event-Konstanten** in `lib/config.ts`: Runner-Name, Event-Name, Race-Start, Rundenparameter
 
 ## Datenbankschema (Supabase, 8 Migrationen)
 
@@ -49,14 +59,26 @@ Backyard Ultra Live-Tracker für Augsburg. Freunde verfolgen einen Läufer in Ec
 ```
 ultraTracker/
 ├── app/
-│   ├── globals.css             # Tailwind v4, Dark-Mode-Tokens
-│   ├── layout.tsx              # Root Layout, lang="de"
-│   └── page.tsx                # Placeholder-Landing
-├── lib/supabase/
-│   ├── client.ts
-│   ├── server.ts
-│   ├── admin.ts
-│   └── database.types.ts       # NEU: generierte DB-Types
+│   ├── globals.css             # Tailwind v4, Dark-Mode-Tokens, --accent #b8ff57
+│   ├── layout.tsx              # Root Layout, lang="de", Barlow Condensed + Geist
+│   └── page.tsx                # Async Server Component — fetcht Initial-Daten, rendert LiveDashboard
+├── components/live/
+│   ├── LiveDashboard.tsx       # 'use client' — Realtime-Hub, hält gesamten State
+│   ├── Hero.tsx                # 100svh Hero: Lap-Zahl, Status, Countdown
+│   ├── Countdown.tsx           # 'use client' — setInterval, Ampelfarben
+│   ├── ConnectionIndicator.tsx # Verbindungsstatus-Dot
+│   ├── ActivityFeed.tsx        # Runden-Timeline mit Fotos
+│   └── MessageWall.tsx         # Read-only Nachrichten-Wand
+├── lib/
+│   ├── config.ts               # Konstanten: RUNNER_NAME, EVENT_NAME, RACE_START_AT, etc.
+│   ├── utils/
+│   │   ├── time.ts             # getNextDeadline, formatCountdown, formatDuration
+│   │   └── status.ts           # runner_status → Emoji + Label + Farbe
+│   └── supabase/
+│       ├── client.ts           # createBrowserClient<Database>
+│       ├── server.ts           # createServerClient<Database>
+│       ├── admin.ts            # Service-Role für Admin-Writes
+│       └── database.types.ts   # generierte DB-Types
 ├── .env.example                # Alle benötigten Var-Namen
 └── SPRINTS.md                  # Vollständiger Sprintplan
 ```
@@ -82,17 +104,17 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-## Nächster Schritt — Sprint 2
 
-**UI + Realtime-Bindings** — öffentliche Live-View und Admin-Panel:
+## Nächster Sprint
 
-- Öffentliche `/`-Seite: Countdown bis Runden-Deadline, aktueller Zustand, Aktivitätsfeed, Nachrichten-Wand
-- Admin `/admin`: Passwortschutz, Runde loggen, Zustand setzen, Notiz + Foto-Upload
-- Supabase Realtime Subscription (Websocket) für `laps`, `runner_state`, `messages`
-- Foto-Upload via Service-Role gegen Storage Bucket `lap-photos` (max. 5/Runde — Validierung in API-Route)
-
-Details: `SPRINTS.md` → Sprint 2.
+**Sprint 3 — Admin-Panel** (`/admin`)
+- Passwortschutz via `ADMIN_PASSWORD` + signiertes HTTP-Cookie
+- Runde loggen (1-Tap-Button)
+- Zustand setzen (4 Status-Buttons)
+- Optionales Crew-Notiz-Feld
+- Foto-Upload (1–5 Fotos/Runde, Supabase Storage Bucket `lap-photos`)
+- Smartphone-optimiert
 
 ## Tech-Stack
 
-Next.js 16 · Tailwind v4 · TypeScript · Supabase (Postgres + Realtime + Storage) · Vercel · pnpm
+Next.js 16 · Tailwind v4 · TypeScript · Supabase (Postgres + Realtime + Storage) · Vercel · pnpm · date-fns · lucide-react · Barlow Condensed (Google Fonts)
