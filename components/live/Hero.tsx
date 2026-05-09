@@ -2,6 +2,7 @@ import { Countdown } from "./Countdown"
 import { ConnectionIndicator } from "./ConnectionIndicator"
 import { ElapsedTime } from "./ElapsedTime"
 import { CurrentRound } from "./CurrentRound"
+import { MilestoneProgress } from "./MilestoneProgress"
 import { getStatusInfo } from "@/lib/utils/status"
 import { EVENT_NAME, RUNNER_NAME, LAP_DISTANCE_KM, RACE_START_AT } from "@/lib/config"
 import type { Tables } from "@/lib/supabase/database.types"
@@ -98,6 +99,13 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
             <span className="text-[10px] font-mono tracking-widest text-white/25">{totalKm} km gesamt</span>
             <span className="text-white/15">·</span>
             <ElapsedTime raceStartedAt={raceStartedAt} />
+          </div>
+        )}
+
+        {/* Milestone progress — 24 Runden / 100 Meilen */}
+        {hasStarted && (
+          <div className="w-full flex justify-center px-8 mt-2">
+            <MilestoneProgress lapNumber={lapNumber} />
           </div>
         )}
       </div>
