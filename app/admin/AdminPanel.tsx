@@ -1,9 +1,10 @@
 "use client"
 
-import { useTransition, useState, useRef } from "react"
-import { logLap, setStatus, setRaceStart } from "./actions"
+import { useTransition, useState, useRef, useEffect } from "react"
+import { logLap, setStatus, setRaceStart, startRaceNow } from "./actions"
 import { FEELING_MAP } from "@/lib/utils/feeling"
 import { compressPhoto } from "@/lib/utils/photo-compress"
+import { LAP_DURATION_MINUTES } from "@/lib/config"
 import type { Enums } from "@/lib/supabase/database.types"
 
 type LapFeeling = Enums<"lap_feeling">
@@ -40,7 +41,7 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
   }
 
   const handleDone = () => {
-    if (isPending || submittingRef.current) return
+    if (isActionPending || !raceHasStarted) return
     const fd = new FormData()
     fd.set("status", "done")
     startTransition(async () => {
@@ -115,7 +116,27 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
     setSelectedFiles(files)
   }
 
-  const isDisabled = isPending || submittingRef.current
+  // Live clock — updates every second for unlock-time display
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const raceStartMs = new Date(optimisticRaceStart).getTime()
+  const slotMs = LAP_DURATION_MINUTES * 60 * 1000
+  const raceHasStarted = now >= raceStartMs
+  const lapUnlockMs = raceStartMs + (optimisticLap - 1) * slotMs
+  const lapAllowed = now >= lapUnlockMs
+
+  const lapBlockReason = !raceHasStarted
+    ? `Start: ${new Date(raceStartMs).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`
+    : !lapAllowed
+      ? `Freischaltung: ${new Date(lapUnlockMs).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`
+      : null
+
+  const isActionPending = isPending || submittingRef.current
+  const isDisabled = isActionPending
 
   const raceStartDisplay = new Date(optimisticRaceStart).toLocaleString("de-DE", {
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -169,36 +190,74 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
         </button>
 
         {showRaceStart && (
-          <form onSubmit={handleRaceStart} style={{ display: "flex", gap: "0.5rem", marginTop: "0.625rem" }}>
-            <input
-              ref={raceStartInputRef}
-              type="datetime-local"
-              name="race_started_at"
-              defaultValue={toDatetimeLocal(optimisticRaceStart)}
-              style={{
-                flex: 1, background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0.375rem",
-                color: "var(--foreground)", fontFamily: "var(--font-sans)", fontSize: "0.85rem",
-                padding: "0.5rem 0.625rem", outline: "none",
-              }}
-            />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.625rem" }}>
+            {/* Manual immediate start */}
             <button
-              type="submit"
+              type="button"
               disabled={isDisabled}
+              onClick={() => {
+                if (isDisabled) return
+                startTransition(async () => {
+                  const result = await startRaceNow()
+                  const nowIso = result.startedAt
+                  setOptimisticRaceStart(nowIso)
+                  showToast("success", "🏁 Rennen manuell gestartet!")
+                  setShowRaceStart(false)
+                })
+              }}
               style={{
-                minHeight: "56px", padding: "0.5rem 0.875rem",
-                background: isPreRace ? "rgba(184,255,87,0.15)" : "rgba(255,255,255,0.07)",
-                border: `1px solid ${isPreRace ? "rgba(184,255,87,0.3)" : "rgba(255,255,255,0.12)"}`,
-                borderRadius: "0.375rem",
+                width: "100%", minHeight: "52px", padding: "0.75rem",
+                background: isDisabled ? "rgba(184,255,87,0.1)" : "rgba(184,255,87,0.18)",
+                border: "1px solid rgba(184,255,87,0.4)", borderRadius: "0.375rem",
                 cursor: isDisabled ? "not-allowed" : "pointer",
-                fontFamily: "var(--font-display)", fontSize: "0.75rem",
-                fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
-                color: isPreRace ? "var(--accent)" : "var(--foreground)",
+                fontFamily: "var(--font-display)", fontSize: "0.9rem",
+                fontWeight: 900, fontStyle: "italic", textTransform: "uppercase", letterSpacing: "0.06em",
+                color: isDisabled ? "rgba(184,255,87,0.4)" : "var(--accent)",
+                WebkitTapHighlightColor: "transparent",
               }}
             >
-              Setzen
+              ⚡ Jetzt starten!
             </button>
-          </form>
+
+            {/* Or set a specific time */}
+            <p style={{
+              fontFamily: "var(--font-display)", fontSize: "0.6rem", fontWeight: 700,
+              letterSpacing: "0.2em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.25)", textAlign: "center", margin: 0,
+            }}>oder Uhrzeit manuell setzen</p>
+
+            <form onSubmit={handleRaceStart} style={{ display: "flex", gap: "0.5rem" }}>
+              <input type="hidden" name="tz_offset_minutes" value={new Date().getTimezoneOffset()} />
+              <input
+                ref={raceStartInputRef}
+                type="datetime-local"
+                name="race_started_at"
+                defaultValue={toDatetimeLocal(optimisticRaceStart)}
+                style={{
+                  flex: 1, background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0.375rem",
+                  color: "var(--foreground)", fontFamily: "var(--font-sans)", fontSize: "0.85rem",
+                  padding: "0.5rem 0.625rem", outline: "none",
+                }}
+              />
+              <button
+                type="submit"
+                disabled={isDisabled}
+                style={{
+                  minHeight: "44px", padding: "0.5rem 0.875rem",
+                  background: "rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: "0.375rem",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
+                  fontFamily: "var(--font-display)", fontSize: "0.75rem",
+                  fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
+                  color: "var(--foreground)",
+                }}
+              >
+                Setzen
+              </button>
+            </form>
+          </div>
         )}
       </div>
 
@@ -294,28 +353,36 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
         {/* Submit */}
         <button
           type="submit"
-          disabled={isDisabled}
+          disabled={isActionPending || !lapAllowed || !raceHasStarted}
           style={{
             width: "100%", minHeight: "68px", padding: "1rem",
-            background: isDisabled ? "rgba(184,255,87,0.25)" : "var(--accent)",
-            border: "none", borderRadius: "0.5rem",
-            cursor: isDisabled ? "not-allowed" : "pointer",
+            background: (isActionPending || !lapAllowed || !raceHasStarted)
+              ? "rgba(184,255,87,0.15)"
+              : "var(--accent)",
+            border: lapBlockReason ? "1px solid rgba(184,255,87,0.2)" : "none",
+            borderRadius: "0.5rem",
+            cursor: (isActionPending || !lapAllowed || !raceHasStarted) ? "not-allowed" : "pointer",
             fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.1rem, 5vw, 1.4rem)",
+            fontSize: lapBlockReason ? "clamp(0.75rem, 3vw, 0.9rem)" : "clamp(1.1rem, 5vw, 1.4rem)",
             fontWeight: 900, fontStyle: "italic", letterSpacing: "0.04em",
-            textTransform: "uppercase", color: "#0a0a0a",
+            textTransform: "uppercase",
+            color: lapBlockReason ? "rgba(184,255,87,0.45)" : "#0a0a0a",
             transition: "background 0.15s",
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          {isDisabled ? "⏳ Wird gespeichert …" : `Runde ${optimisticLap} abschließen`}
+          {isActionPending
+            ? "⏳ Wird gespeichert …"
+            : lapBlockReason
+              ? `🔒 ${lapBlockReason}`
+              : `Runde ${optimisticLap} abschließen`}
         </button>
       </form>
 
       {/* Race over */}
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
         <button
-          disabled={isDisabled}
+          disabled={isActionPending || !raceHasStarted}
           onClick={handleDone}
           style={{
             width: "100%", minHeight: "52px", padding: "0.75rem",

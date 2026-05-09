@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { RACE_START_AT } from "@/lib/config"
 import AdminPanel from "./AdminPanel"
 
 export const dynamic = "force-dynamic"
@@ -16,7 +17,7 @@ export default async function AdminPage() {
   return (
     <AdminPanel
       nextLapNumber={nextLapNumber}
-      raceStartedAt={state?.race_started_at ?? "2026-05-09T13:00:00.000Z"}
+      raceStartedAt={state?.race_started_at ?? RACE_START_AT.toISOString()}
     />
   )
 }
