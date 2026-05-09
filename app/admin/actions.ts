@@ -84,15 +84,6 @@ export async function logLap(formData: FormData): Promise<LogLapResult> {
     return { error: `Rennen startet erst um ${startTime} Uhr` }
   }
 
-  // Guard: lap N can only be logged once its hour-slot has started (T0 + (N-1)*60min)
-  const unlockMs = raceStartMs + (lap_number - 1) * slotMs
-  if (now < unlockMs) {
-    const unlockTime = new Date(unlockMs).toLocaleString("de-DE", {
-      hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin",
-    })
-    return { error: `Runde ${lap_number} erst ab ${unlockTime} Uhr möglich` }
-  }
-
   const started_at = new Date(raceStartMs + (lap_number - 1) * slotMs).toISOString()
   const note = (formData.get("note") as string | null)?.trim() || null
   const feelingRaw = formData.get("feeling") as string | null
