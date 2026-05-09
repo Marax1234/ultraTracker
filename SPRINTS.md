@@ -14,43 +14,6 @@ Konfigurations-Ständen gearbeitet wird (Trainingsdaten reichen nicht).
 
 ---
 
-## Sprint 0 — Bootstrap & Infrastruktur-Skelett
-
-**Ziel**: Lauffähiges Next.js-14-Projekt lokal + Vercel-Preview + leeres Supabase-Projekt
-(Region Frankfurt). Keine Features — nur das Fundament.
-
-### Recherche (Pflicht vor Sprintstart)
-- `find-docs`: Next.js 14 App Router (aktuelle Setup-Schritte, TypeScript-Defaults).
-- `find-docs`: Tailwind CSS **v4** (das ist der entscheidende Punkt — v4 unterscheidet sich stark von v3, kein `tailwind.config.js` mehr, neue `@import`-Syntax).
-- `find-docs`: `@supabase/supabase-js` und `@supabase/ssr` (aktuelle Cookie-Bridges).
-- Skill `vercel:knowledge-update` einlesen, damit Plattform-Stand aktuell ist.
-
-### MCPs
-- `plugin:supabase` → `list_organizations`, `create_project` (Region `eu-central-1`), anschließend `get_project_url` und `get_publishable_keys`.
-- `plugin:vercel` → `list_teams`, `list_projects`, `get_project` (zum Verlinken nach Repo-Push).
-
-### Skills
-- `vercel:bootstrap` (orchestriert Linking + Env-Pull + erste `dev`-Runde).
-- `vercel:env-vars` (`.env.local`-Konventionen, OIDC, niemals Secrets ins Repo).
-- `vercel:nextjs` (App-Router-Konventionen, `app/`-Struktur).
-- `supabase:supabase` (Projekt-Skeleton, Empfehlungen für lokale Entwicklung).
-- `find-docs` (siehe oben).
-
-### Detailbeschreibung
-- Next.js 14 mit TypeScript, App Router, ESLint aktiv, ohne `src/`-Ordner.
-- Tailwind v4 einrichten (CSS-zentrierte Konfiguration, Dark-Mode als Default-Theme via CSS-Custom-Properties).
-- `lucide-react` und `date-fns` als Abhängigkeiten installieren — noch nicht verwenden.
-- `.env.example` mit `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, `SESSION_SECRET`.
-- GitHub-Repo erstellen, Vercel-Projekt verlinken, erste Preview-Deploy auf leerem Layout.
-- Supabase-Projekt anlegen (Region Frankfurt), Anon-Key in Vercel-Envs (Preview + Production) ablegen.
-- Branch-Strategie festlegen: `main` = Production, Feature-Branches → Preview-URLs.
-
-### Akzeptanzkriterien
-- `pnpm dev` rendert eine leere Startseite mit Dark-Mode-Hintergrund.
-- Vercel-Preview-Deploy ist grün und erreichbar.
-- Supabase-Client kann clientseitig instanziiert werden (Konsole zeigt keine Fehler).
-
----
 
 ## Sprint 1 — Datenmodell & RLS
 
