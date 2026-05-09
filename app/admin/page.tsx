@@ -16,7 +16,6 @@ export default async function AdminPage() {
   return (
     <AdminPanel
       nextLapNumber={nextLapNumber}
-      currentStatus={state?.current_status ?? "running"}
       raceStartedAt={state?.race_started_at ?? "2026-05-09T13:00:00.000Z"}
     />
   )

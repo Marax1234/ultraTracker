@@ -1,9 +1,12 @@
-import { addMinutes } from "date-fns"
-import { LAP_DURATION_MINUTES, RACE_START_AT } from "@/lib/config"
+import { LAP_DURATION_MINUTES } from "@/lib/config"
 
-export function getNextDeadline(lastStartedAt: string | null): Date {
-  if (!lastStartedAt) return RACE_START_AT
-  return addMinutes(new Date(lastStartedAt), LAP_DURATION_MINUTES)
+export function getNextDeadline(raceStartedAt: string, lastStartedAt: string | null): Date {
+  const start = new Date(raceStartedAt).getTime()
+  const elapsed = Date.now() - start
+  if (elapsed < 0) return new Date(start)
+  const slotMs = LAP_DURATION_MINUTES * 60 * 1000
+  const nextSlot = Math.ceil(elapsed / slotMs) * slotMs
+  return new Date(start + nextSlot)
 }
 
 export function formatCountdown(ms: number): string {

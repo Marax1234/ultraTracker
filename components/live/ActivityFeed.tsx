@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns"
 import { de } from "date-fns/locale"
 import { formatDuration } from "@/lib/utils/time"
 import { getThumbUrl, getFullUrl } from "@/lib/utils/storage-image"
+import { getFeelingInfo } from "@/lib/utils/feeling"
 import type { Tables } from "@/lib/supabase/database.types"
 import { Lightbox } from "./Lightbox"
 
@@ -49,6 +50,17 @@ function LapCard({
             </span>
           ) : (
             <>
+              {lap.feeling && (() => {
+                const f = getFeelingInfo(lap.feeling)
+                return (
+                  <span
+                    className="text-[10px] font-mono font-semibold tracking-widest uppercase"
+                    style={{ color: f.color }}
+                  >
+                    {f.emoji} {f.label}
+                  </span>
+                )
+              })()}
               {lap.duration_seconds !== null && (
                 <span className="text-sm font-mono text-white/50 tabular-nums">
                   {formatDuration(lap.duration_seconds)}

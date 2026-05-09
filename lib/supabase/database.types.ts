@@ -19,6 +19,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           duration_seconds: number | null
+          feeling: Database["public"]["Enums"]["lap_feeling"] | null
           id: string
           lap_number: number
           note: string | null
@@ -28,6 +29,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           duration_seconds?: number | null
+          feeling?: Database["public"]["Enums"]["lap_feeling"] | null
           id?: string
           lap_number: number
           note?: string | null
@@ -37,6 +39,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           duration_seconds?: number | null
+          feeling?: Database["public"]["Enums"]["lap_feeling"] | null
           id?: string
           lap_number?: number
           note?: string | null
@@ -126,6 +129,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      lap_feeling: "strong" | "good" | "tough" | "rough"
       runner_status: "running" | "resting" | "struggling" | "done"
     }
     CompositeTypes: {
@@ -254,6 +258,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      lap_feeling: ["strong", "good", "tough", "rough"],
       runner_status: ["running", "resting", "struggling", "done"],
     },
   },

@@ -6,7 +6,7 @@ export const STATUS_MAP: Record<RunnerStatus, { emoji: string; label: string; co
   running:   { emoji: "🏃", label: "Unterwegs",     color: "#b8ff57" },
   resting:   { emoji: "😮‍💨", label: "Pause",          color: "#f59e0b" },
   struggling:{ emoji: "😣", label: "Kämpft",         color: "#f97316" },
-  done:      { emoji: "🏁", label: "Ziel erreicht",  color: "#6b7280" },
+  done:      { emoji: "🏁", label: "Rennen beendet", color: "#6b7280" },
 }
 
 export function getStatusInfo(status: RunnerStatus) {

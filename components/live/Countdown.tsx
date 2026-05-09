@@ -2,24 +2,24 @@
 
 import { useEffect, useState } from "react"
 import { formatCountdown, getNextDeadline } from "@/lib/utils/time"
-import { RACE_START_AT } from "@/lib/config"
 
-export function Countdown({ lastStartedAt }: { lastStartedAt: string | null }) {
+type Props = { raceStartedAt: string; lastStartedAt: string | null }
+
+export function Countdown({ raceStartedAt, lastStartedAt }: Props) {
   const [remaining, setRemaining] = useState(() => {
-    const deadline = lastStartedAt ? getNextDeadline(lastStartedAt) : RACE_START_AT
+    const deadline = getNextDeadline(raceStartedAt, lastStartedAt)
     return Math.max(0, deadline.getTime() - Date.now())
   })
 
   useEffect(() => {
-    const deadline = lastStartedAt ? getNextDeadline(lastStartedAt) : RACE_START_AT
-
     function tick() {
+      const deadline = getNextDeadline(raceStartedAt, lastStartedAt)
       setRemaining(Math.max(0, deadline.getTime() - Date.now()))
     }
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [lastStartedAt])
+  }, [raceStartedAt, lastStartedAt])
 
   const minutes = remaining / 60000
   const color =

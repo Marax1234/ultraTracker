@@ -1,7 +1,8 @@
 import { Countdown } from "./Countdown"
 import { ConnectionIndicator } from "./ConnectionIndicator"
+import { ElapsedTime } from "./ElapsedTime"
 import { getStatusInfo } from "@/lib/utils/status"
-import { EVENT_NAME, RUNNER_NAME, LAP_DISTANCE_KM } from "@/lib/config"
+import { EVENT_NAME, RUNNER_NAME, LAP_DISTANCE_KM, RACE_START_AT } from "@/lib/config"
 import type { Tables } from "@/lib/supabase/database.types"
 
 type Props = {
@@ -16,6 +17,7 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
   const lapNumber = runnerState?.current_lap ?? 0
   const hasStarted = lapNumber > 0
   const totalKm = (lapNumber * LAP_DISTANCE_KM).toFixed(1)
+  const raceStartedAt = runnerState?.race_started_at ?? RACE_START_AT.toISOString()
 
   return (
     <section className="relative min-h-[100svh] flex flex-col bg-[#0a0a0a] overflow-hidden select-none">
@@ -86,15 +88,17 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
 
         {/* Countdown */}
         <div className="mt-1">
-          <Countdown lastStartedAt={lastStartedAt} />
+          <Countdown raceStartedAt={raceStartedAt} lastStartedAt={lastStartedAt} />
         </div>
 
         {/* Stats row */}
         {hasStarted && (
-          <div className="flex items-center gap-4 mt-3 text-white/25">
-            <span className="text-[10px] font-mono tracking-widest">{LAP_DISTANCE_KM} km / Runde</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-3">
+            <span className="text-[10px] font-mono tracking-widest text-white/25">{LAP_DISTANCE_KM} km / Runde</span>
             <span className="text-white/15">·</span>
-            <span className="text-[10px] font-mono tracking-widest">{totalKm} km gesamt</span>
+            <span className="text-[10px] font-mono tracking-widest text-white/25">{totalKm} km gesamt</span>
+            <span className="text-white/15">·</span>
+            <ElapsedTime raceStartedAt={raceStartedAt} />
           </div>
         )}
       </div>

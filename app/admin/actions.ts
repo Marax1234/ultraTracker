@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Enums } from "@/lib/supabase/database.types"
 
+
 export async function setStatus(formData: FormData) {
   await requireAdmin()
   const status = formData.get("status") as Enums<"runner_status">
@@ -55,11 +56,13 @@ export async function logLap(formData: FormData): Promise<LogLapResult> {
   const raceStartMs = Date.parse(state.race_started_at)
   const started_at = new Date(raceStartMs + (lap_number - 1) * 3600 * 1000).toISOString()
   const note = (formData.get("note") as string | null)?.trim() || null
+  const feelingRaw = formData.get("feeling") as string | null
+  const feeling = feelingRaw || null
 
   // completed_at omitted — DB DEFAULT now() is the source of truth for server time
   const { data: lap, error: lapError } = await admin
     .from("laps")
-    .insert({ lap_number, started_at, note })
+    .insert({ lap_number, started_at, note, feeling: feeling as Enums<"lap_feeling"> | null })
     .select("id")
     .single()
 

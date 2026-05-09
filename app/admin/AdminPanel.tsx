@@ -2,15 +2,14 @@
 
 import { useTransition, useState, useRef } from "react"
 import { logLap, setStatus, setRaceStart } from "./actions"
-import { STATUS_MAP } from "@/lib/utils/status"
+import { FEELING_MAP } from "@/lib/utils/feeling"
 import { compressPhoto } from "@/lib/utils/photo-compress"
 import type { Enums } from "@/lib/supabase/database.types"
 
-type RunnerStatus = Enums<"runner_status">
+type LapFeeling = Enums<"lap_feeling">
 
 interface Props {
   nextLapNumber: number
-  currentStatus: RunnerStatus
   raceStartedAt: string
 }
 
@@ -20,13 +19,14 @@ function toDatetimeLocal(isoString: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt }: Props) {
+export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [showRaceStart, setShowRaceStart] = useState(false)
+  const isPreRace = nextLapNumber === 1
+  const [showRaceStart, setShowRaceStart] = useState(isPreRace)
   const [optimisticLap, setOptimisticLap] = useState(nextLapNumber)
-  const [optimisticStatus, setOptimisticStatus] = useState(currentStatus)
+  const [selectedFeeling, setSelectedFeeling] = useState<LapFeeling | null>(null)
   const [optimisticRaceStart, setOptimisticRaceStart] = useState(raceStartedAt)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const noteRef = useRef<HTMLTextAreaElement>(null)
@@ -39,14 +39,13 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
     setTimeout(() => setToast(null), 3500)
   }
 
-  const handleStatusTap = (status: RunnerStatus) => {
+  const handleDone = () => {
     if (isPending || submittingRef.current) return
-    setOptimisticStatus(status)
     const fd = new FormData()
-    fd.set("status", status)
+    fd.set("status", "done")
     startTransition(async () => {
       await setStatus(fd)
-      showToast("success", `${STATUS_MAP[status].emoji} ${STATUS_MAP[status].label}`)
+      showToast("success", "🏁 Rennen beendet")
     })
   }
 
@@ -58,6 +57,7 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
     const note = noteRef.current?.value?.trim() ?? ""
     const fd = new FormData()
     if (note) fd.set("note", note)
+    if (selectedFeeling) fd.set("feeling", selectedFeeling)
 
     try {
       for (const file of selectedFiles) {
@@ -84,6 +84,7 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
           setSelectedFiles([])
           if (fileInputRef.current) fileInputRef.current.value = ""
           setOptimisticLap(lapNum + 1)
+          setSelectedFeeling(null)
           const msg = result.photoErrors?.length
             ? `Runde ${lapNum} ✓ — ${result.photoErrors.length} Foto-Fehler`
             : `Runde ${lapNum} abgeschlossen ✓`
@@ -120,7 +121,7 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
   })
 
-  const statusEntries = Object.entries(STATUS_MAP) as [RunnerStatus, { emoji: string; label: string; color: string }][]
+  const feelingEntries = Object.entries(FEELING_MAP) as [LapFeeling, { emoji: string; label: string; color: string }][]
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", maxWidth: "420px", margin: "0 auto" }}>
@@ -144,46 +145,106 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
         </div>
       )}
 
-      {/* Status grid */}
-      <div>
-        <p style={{
-          fontFamily: "var(--font-display)", fontSize: "0.65rem", fontWeight: 700,
-          letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)",
-          margin: "0 0 0.5rem",
-        }}>Status</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-          {statusEntries.map(([status, info]) => {
-            const active = optimisticStatus === status
-            return (
-              <button
-                key={status}
-                disabled={isDisabled}
-                onClick={() => handleStatusTap(status)}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center",
-                  justifyContent: "center", gap: "0.25rem",
-                  minHeight: "64px", padding: "0.75rem",
-                  background: active ? "rgba(184,255,87,0.07)" : "rgba(255,255,255,0.03)",
-                  border: `2px solid ${active ? info.color : "rgba(255,255,255,0.08)"}`,
-                  borderRadius: "0.5rem", cursor: isDisabled ? "not-allowed" : "pointer",
-                  transition: "border-color 0.15s, background 0.15s",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >
-                <span style={{ fontSize: "1.625rem", lineHeight: 1 }} aria-hidden="true">{info.emoji}</span>
-                <span style={{
-                  fontFamily: "var(--font-display)", fontSize: "0.75rem", fontWeight: 700,
-                  letterSpacing: "0.06em", textTransform: "uppercase", color: active ? info.color : "var(--foreground)",
-                  transition: "color 0.15s",
-                }}>{info.label}</span>
-              </button>
-            )
-          })}
-        </div>
+      {/* Race start — prominent pre-race, collapsible once running */}
+      <div style={{
+        borderRadius: "0.5rem",
+        border: isPreRace ? "1px solid rgba(184,255,87,0.25)" : "none",
+        borderTop: isPreRace ? undefined : "1px solid rgba(255,255,255,0.06)",
+        background: isPreRace ? "rgba(184,255,87,0.04)" : "transparent",
+        padding: isPreRace ? "0.875rem" : "0.75rem 0 0",
+      }}>
+        <button
+          onClick={() => setShowRaceStart(v => !v)}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            padding: "0.25rem 0", minHeight: "44px", width: "100%", textAlign: "left",
+            fontFamily: "var(--font-display)", fontSize: isPreRace ? "0.75rem" : "0.65rem",
+            fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase",
+            color: isPreRace ? "rgba(184,255,87,0.7)" : "rgba(255,255,255,0.3)",
+            display: "flex", alignItems: "center", gap: "0.35rem",
+          }}
+        >
+          {showRaceStart ? "▾" : "▸"}
+          {isPreRace ? `⏱ Startzeit festlegen (${raceStartDisplay})` : `Offizieller Start (${raceStartDisplay})`}
+        </button>
+
+        {showRaceStart && (
+          <form onSubmit={handleRaceStart} style={{ display: "flex", gap: "0.5rem", marginTop: "0.625rem" }}>
+            <input
+              ref={raceStartInputRef}
+              type="datetime-local"
+              name="race_started_at"
+              defaultValue={toDatetimeLocal(optimisticRaceStart)}
+              style={{
+                flex: 1, background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0.375rem",
+                color: "var(--foreground)", fontFamily: "var(--font-sans)", fontSize: "0.85rem",
+                padding: "0.5rem 0.625rem", outline: "none",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={isDisabled}
+              style={{
+                minHeight: "56px", padding: "0.5rem 0.875rem",
+                background: isPreRace ? "rgba(184,255,87,0.15)" : "rgba(255,255,255,0.07)",
+                border: `1px solid ${isPreRace ? "rgba(184,255,87,0.3)" : "rgba(255,255,255,0.12)"}`,
+                borderRadius: "0.375rem",
+                cursor: isDisabled ? "not-allowed" : "pointer",
+                fontFamily: "var(--font-display)", fontSize: "0.75rem",
+                fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
+                color: isPreRace ? "var(--accent)" : "var(--foreground)",
+              }}
+            >
+              Setzen
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Lap form */}
       <form onSubmit={handleLogLap} style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+
+        {/* Feeling selector */}
+        <div>
+          <p style={{
+            fontFamily: "var(--font-display)", fontSize: "0.65rem", fontWeight: 700,
+            letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)",
+            margin: "0 0 0.5rem",
+          }}>Wie lief die Runde?</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+            {feelingEntries.map(([feeling, info]) => {
+              const active = selectedFeeling === feeling
+              return (
+                <button
+                  key={feeling}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => setSelectedFeeling(active ? null : feeling)}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "center",
+                    justifyContent: "center", gap: "0.25rem",
+                    minHeight: "64px", padding: "0.75rem",
+                    background: active ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+                    border: `2px solid ${active ? info.color : "rgba(255,255,255,0.08)"}`,
+                    borderRadius: "0.5rem", cursor: isDisabled ? "not-allowed" : "pointer",
+                    transition: "border-color 0.15s, background 0.15s",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <span style={{ fontSize: "1.625rem", lineHeight: 1 }} aria-hidden="true">{info.emoji}</span>
+                  <span style={{
+                    fontFamily: "var(--font-display)", fontSize: "0.75rem", fontWeight: 700,
+                    letterSpacing: "0.06em", textTransform: "uppercase",
+                    color: active ? info.color : "var(--foreground)",
+                    transition: "color 0.15s",
+                  }}>{info.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         <textarea
           ref={noteRef}
           placeholder="Notiz zur Runde (optional)"
@@ -251,53 +312,26 @@ export default function AdminPanel({ nextLapNumber, currentStatus, raceStartedAt
         </button>
       </form>
 
-      {/* Race start editor */}
+      {/* Race over */}
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
         <button
-          onClick={() => setShowRaceStart(v => !v)}
+          disabled={isDisabled}
+          onClick={handleDone}
           style={{
-            background: "none", border: "none", cursor: "pointer",
-            padding: "0.5rem 0", minHeight: "44px",
-            fontFamily: "var(--font-display)", fontSize: "0.65rem", fontWeight: 700,
-            letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)",
-            display: "flex", alignItems: "center", gap: "0.35rem",
+            width: "100%", minHeight: "52px", padding: "0.75rem",
+            background: "rgba(239,68,68,0.07)",
+            border: "1px solid rgba(239,68,68,0.25)", borderRadius: "0.5rem",
+            cursor: isDisabled ? "not-allowed" : "pointer",
+            fontFamily: "var(--font-display)", fontSize: "0.85rem",
+            fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+            color: "rgba(239,68,68,0.7)",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
-          {showRaceStart ? "▾" : "▸"} Offizieller Start ({raceStartDisplay})
+          🏁 Rennen beendet
         </button>
-
-        {showRaceStart && (
-          <form onSubmit={handleRaceStart} style={{ display: "flex", gap: "0.5rem", marginTop: "0.625rem" }}>
-            <input
-              ref={raceStartInputRef}
-              type="datetime-local"
-              name="race_started_at"
-              defaultValue={toDatetimeLocal(optimisticRaceStart)}
-              style={{
-                flex: 1, background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0.375rem",
-                color: "var(--foreground)", fontFamily: "var(--font-sans)", fontSize: "0.85rem",
-                padding: "0.5rem 0.625rem", outline: "none",
-              }}
-            />
-            <button
-              type="submit"
-              disabled={isDisabled}
-              style={{
-                minHeight: "56px", padding: "0.5rem 0.875rem",
-                background: "rgba(255,255,255,0.07)",
-                border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0.375rem",
-                cursor: isDisabled ? "not-allowed" : "pointer",
-                fontFamily: "var(--font-display)", fontSize: "0.75rem",
-                fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
-                color: "var(--foreground)",
-              }}
-            >
-              Setzen
-            </button>
-          </form>
-        )}
       </div>
+
     </div>
   )
 }
