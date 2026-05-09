@@ -103,6 +103,7 @@ export type Database = {
           current_status: Database["public"]["Enums"]["runner_status"]
           id: number
           race_started_at: string
+          souls_left: number | null
           updated_at: string
         }
         Insert: {
@@ -110,6 +111,7 @@ export type Database = {
           current_status?: Database["public"]["Enums"]["runner_status"]
           id?: number
           race_started_at?: string
+          souls_left?: number | null
           updated_at?: string
         }
         Update: {
@@ -117,6 +119,7 @@ export type Database = {
           current_status?: Database["public"]["Enums"]["runner_status"]
           id?: number
           race_started_at?: string
+          souls_left?: number | null
           updated_at?: string
         }
         Relationships: []

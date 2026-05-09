@@ -73,6 +73,18 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
           </span>
         </div>
 
+        {/* Souls Left */}
+        {runnerState?.souls_left != null && (
+          <div className="flex flex-col items-center gap-1 mt-1">
+            <p className="text-[9px] tracking-[0.45em] uppercase text-white/20 font-mono">
+              Souls Left
+            </p>
+            <p className="text-5xl font-black font-mono tabular-nums" style={{ color: "var(--accent)" }}>
+              {runnerState.souls_left}
+            </p>
+          </div>
+        )}
+
         {/* Countdown */}
         <div className="mt-1">
           <Countdown raceStartedAt={raceStartedAt} lastStartedAt={lastStartedAt} />

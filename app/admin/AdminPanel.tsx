@@ -1,7 +1,7 @@
 "use client"
 
 import { useTransition, useState, useRef, useEffect } from "react"
-import { logLap, setStatus, setRaceStart, startRaceNow } from "./actions"
+import { logLap, setStatus, setRaceStart, startRaceNow, setSoulsLeft, adjustSoulsLeft } from "./actions"
 import { FEELING_MAP } from "@/lib/utils/feeling"
 import { compressPhoto } from "@/lib/utils/photo-compress"
 import type { Enums } from "@/lib/supabase/database.types"
@@ -11,6 +11,7 @@ type LapFeeling = Enums<"lap_feeling">
 interface Props {
   nextLapNumber: number
   raceStartedAt: string
+  initialSoulsLeft: number | null
 }
 
 function toDatetimeLocal(isoString: string): string {
@@ -19,13 +20,15 @@ function toDatetimeLocal(isoString: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
+export default function AdminPanel({ nextLapNumber, raceStartedAt, initialSoulsLeft }: Props) {
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const isPreRace = nextLapNumber === 1
   const [showRaceStart, setShowRaceStart] = useState(isPreRace)
   const [optimisticLap, setOptimisticLap] = useState(nextLapNumber)
+  const [optimisticSouls, setOptimisticSouls] = useState<number | null>(initialSoulsLeft)
+  const soulsInputRef = useRef<HTMLInputElement>(null)
   const [selectedFeeling, setSelectedFeeling] = useState<LapFeeling | null>(null)
   const [optimisticRaceStart, setOptimisticRaceStart] = useState(raceStartedAt)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -389,6 +392,141 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
         >
           🏁 Rennen beendet
         </button>
+      </div>
+
+      {/* Souls Left Counter */}
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+        <p style={{
+          fontFamily: "var(--font-display)", fontSize: "0.65rem", fontWeight: 700,
+          letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)",
+          margin: 0,
+        }}>
+          ⚰️ Souls Left
+          {optimisticSouls !== null && (
+            <span style={{ marginLeft: "0.5rem", color: "rgba(255,255,255,0.5)", fontWeight: 400 }}>
+              ({optimisticSouls})
+            </span>
+          )}
+        </p>
+
+        {/* +/- row */}
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "stretch" }}>
+          <button
+            type="button"
+            disabled={isActionPending || optimisticSouls === 0}
+            onClick={() => {
+              if (isActionPending) return
+              const next = Math.max(0, (optimisticSouls ?? 0) - 1)
+              setOptimisticSouls(next)
+              startTransition(async () => {
+                await adjustSoulsLeft(-1)
+                showToast("success", `Souls: ${next} ✓`)
+              })
+            }}
+            style={{
+              minWidth: "64px", minHeight: "56px", padding: "0.75rem",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.375rem",
+              cursor: (isActionPending || optimisticSouls === 0) ? "not-allowed" : "pointer",
+              fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 900,
+              color: (isActionPending || optimisticSouls === 0) ? "rgba(255,255,255,0.2)" : "var(--foreground)",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            −
+          </button>
+
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "0.375rem",
+            fontFamily: "var(--font-display)", fontSize: "1.75rem", fontWeight: 900,
+            color: optimisticSouls !== null ? "var(--accent)" : "rgba(255,255,255,0.2)",
+            letterSpacing: "0.05em",
+          }}>
+            {optimisticSouls !== null ? optimisticSouls : "—"}
+          </div>
+
+          <button
+            type="button"
+            disabled={isActionPending}
+            onClick={() => {
+              if (isActionPending) return
+              const next = (optimisticSouls ?? 0) + 1
+              setOptimisticSouls(next)
+              startTransition(async () => {
+                await adjustSoulsLeft(1)
+                showToast("success", `Souls: ${next} ✓`)
+              })
+            }}
+            style={{
+              minWidth: "64px", minHeight: "56px", padding: "0.75rem",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.375rem",
+              cursor: isActionPending ? "not-allowed" : "pointer",
+              fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 900,
+              color: isActionPending ? "rgba(255,255,255,0.2)" : "var(--foreground)",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Direct set form */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (isActionPending) return
+            const fd = new FormData(e.currentTarget)
+            const raw = fd.get("souls_left") as string
+            const parsed = parseInt(raw, 10)
+            if (isNaN(parsed) || parsed < 0) {
+              showToast("error", "Ungültige Zahl")
+              return
+            }
+            setOptimisticSouls(parsed)
+            if (soulsInputRef.current) soulsInputRef.current.value = ""
+            startTransition(async () => {
+              const result = await setSoulsLeft(fd)
+              if (result?.error) {
+                showToast("error", result.error)
+              } else {
+                showToast("success", `Souls: ${parsed} gesetzt ✓`)
+              }
+            })
+          }}
+          style={{ display: "flex", gap: "0.5rem" }}
+        >
+          <input
+            ref={soulsInputRef}
+            type="number"
+            name="souls_left"
+            min={0}
+            placeholder="Zahl direkt setzen"
+            style={{
+              flex: 1, background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.12)", borderRadius: "0.375rem",
+              color: "var(--foreground)", fontFamily: "var(--font-sans)", fontSize: "0.85rem",
+              padding: "0.5rem 0.625rem", outline: "none",
+            }}
+          />
+          <button
+            type="submit"
+            disabled={isActionPending}
+            style={{
+              minHeight: "44px", padding: "0.5rem 0.875rem",
+              background: "rgba(255,255,255,0.07)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: "0.375rem",
+              cursor: isActionPending ? "not-allowed" : "pointer",
+              fontFamily: "var(--font-display)", fontSize: "0.75rem",
+              fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
+              color: "var(--foreground)",
+            }}
+          >
+            Setzen
+          </button>
+        </form>
       </div>
 
     </div>

@@ -48,6 +48,37 @@ export async function startRaceNow() {
   return { startedAt: now }
 }
 
+export async function setSoulsLeft(formData: FormData): Promise<{ error?: string }> {
+  await requireAdmin()
+  const raw = formData.get("souls_left") as string
+  const parsed = parseInt(raw, 10)
+  if (isNaN(parsed) || parsed < 0) return { error: "Ungültige Zahl" }
+  const admin = createAdminClient()
+  await admin
+    .from("runner_state")
+    .update({ souls_left: parsed, updated_at: new Date().toISOString() })
+    .eq("id", 1)
+  revalidatePath("/admin")
+  return {}
+}
+
+export async function adjustSoulsLeft(delta: number): Promise<void> {
+  await requireAdmin()
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from("runner_state")
+    .select("souls_left")
+    .eq("id", 1)
+    .single()
+  const current = data?.souls_left ?? 0
+  const next = Math.max(0, current + delta)
+  await admin
+    .from("runner_state")
+    .update({ souls_left: next, updated_at: new Date().toISOString() })
+    .eq("id", 1)
+  revalidatePath("/admin")
+}
+
 export type LogLapResult = { error?: string; photoErrors?: string[] }
 
 export async function logLap(formData: FormData): Promise<LogLapResult> {

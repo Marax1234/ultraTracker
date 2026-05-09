@@ -18,6 +18,7 @@ export default async function AdminPage() {
     <AdminPanel
       nextLapNumber={nextLapNumber}
       raceStartedAt={state?.race_started_at ?? RACE_START_AT.toISOString()}
+      initialSoulsLeft={state?.souls_left ?? null}
     />
   )
 }
