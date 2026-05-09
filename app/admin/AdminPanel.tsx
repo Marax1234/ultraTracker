@@ -319,7 +319,6 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
             type="file"
             multiple
             accept="image/*"
-            capture="environment"
             onChange={handleFileChange}
             aria-label="Bis zu 5 Fotos der Runde hinzufügen"
             style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
