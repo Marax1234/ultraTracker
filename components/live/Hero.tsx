@@ -1,6 +1,7 @@
 import { Countdown } from "./Countdown"
 import { ConnectionIndicator } from "./ConnectionIndicator"
 import { ElapsedTime } from "./ElapsedTime"
+import { CurrentRound } from "./CurrentRound"
 import { getStatusInfo } from "@/lib/utils/status"
 import { EVENT_NAME, RUNNER_NAME, LAP_DISTANCE_KM, RACE_START_AT } from "@/lib/config"
 import type { Tables } from "@/lib/supabase/database.types"
@@ -16,7 +17,6 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
   const { emoji, label, color } = getStatusInfo(status)
   const lapNumber = runnerState?.current_lap ?? 0
   const hasStarted = lapNumber > 0
-  const displayRound = status === "done" ? lapNumber : lapNumber + 1
   const totalKm = (lapNumber * LAP_DISTANCE_KM).toFixed(1)
   const raceStartedAt = runnerState?.race_started_at ?? RACE_START_AT.toISOString()
 
@@ -57,21 +57,7 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
           <p className="text-[9px] tracking-[0.45em] uppercase text-white/20 font-mono mb-1">
             Runde
           </p>
-          <div
-            aria-label={`Runde ${displayRound}`}
-            style={{
-              fontSize: "clamp(9rem, 32vw, 20rem)",
-              lineHeight: 0.82,
-              fontVariantNumeric: "tabular-nums",
-              fontWeight: 900,
-              fontStyle: "italic",
-              fontFamily: "var(--font-barlow-condensed), var(--font-geist-sans), sans-serif",
-              color: hasStarted ? "#ededed" : "rgba(255,255,255,0.1)",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            {hasStarted ? displayRound : "—"}
-          </div>
+          <CurrentRound lapNumber={lapNumber} raceStartedAt={raceStartedAt} status={status} />
         </div>
 
         {/* Status badge */}
