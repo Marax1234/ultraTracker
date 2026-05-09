@@ -101,6 +101,7 @@ export type Database = {
         Row: {
           current_lap: number
           current_status: Database["public"]["Enums"]["runner_status"]
+          hero_image_path: string | null
           id: number
           race_started_at: string
           souls_left: number | null
@@ -109,6 +110,7 @@ export type Database = {
         Insert: {
           current_lap?: number
           current_status?: Database["public"]["Enums"]["runner_status"]
+          hero_image_path?: string | null
           id?: number
           race_started_at?: string
           souls_left?: number | null
@@ -117,6 +119,7 @@ export type Database = {
         Update: {
           current_lap?: number
           current_status?: Database["public"]["Enums"]["runner_status"]
+          hero_image_path?: string | null
           id?: number
           race_started_at?: string
           souls_left?: number | null

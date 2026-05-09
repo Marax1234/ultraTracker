@@ -48,6 +48,56 @@ export async function startRaceNow() {
   return { startedAt: now }
 }
 
+export async function setHeroImage(formData: FormData): Promise<{ error?: string }> {
+  await requireAdmin()
+  const file = formData.get("hero_image") as File | null
+  if (!file || file.size === 0) return { error: "Kein Bild ausgewählt" }
+
+  const admin = createAdminClient()
+
+  // Remove old image from storage if one exists
+  const { data: state } = await admin
+    .from("runner_state")
+    .select("hero_image_path")
+    .eq("id", 1)
+    .single()
+  if (state?.hero_image_path) {
+    await admin.storage.from("lap-photos").remove([state.hero_image_path])
+  }
+
+  const path = `hero/image-${Date.now()}.jpg`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const { error: uploadError } = await admin.storage
+    .from("lap-photos")
+    .upload(path, buffer, { contentType: "image/jpeg", upsert: false })
+  if (uploadError) return { error: uploadError.message }
+
+  await admin
+    .from("runner_state")
+    .update({ hero_image_path: path, updated_at: new Date().toISOString() })
+    .eq("id", 1)
+  revalidatePath("/admin")
+  return {}
+}
+
+export async function clearHeroImage(): Promise<void> {
+  await requireAdmin()
+  const admin = createAdminClient()
+  const { data: state } = await admin
+    .from("runner_state")
+    .select("hero_image_path")
+    .eq("id", 1)
+    .single()
+  if (state?.hero_image_path) {
+    await admin.storage.from("lap-photos").remove([state.hero_image_path])
+  }
+  await admin
+    .from("runner_state")
+    .update({ hero_image_path: null, updated_at: new Date().toISOString() })
+    .eq("id", 1)
+  revalidatePath("/admin")
+}
+
 export async function setSoulsLeft(formData: FormData): Promise<{ error?: string }> {
   await requireAdmin()
   const raw = formData.get("souls_left") as string

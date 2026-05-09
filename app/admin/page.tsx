@@ -14,11 +14,15 @@ export default async function AdminPage() {
 
   const nextLapNumber = (prevLap?.lap_number ?? 0) + 1
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
   return (
     <AdminPanel
       nextLapNumber={nextLapNumber}
       raceStartedAt={state?.race_started_at ?? RACE_START_AT.toISOString()}
       initialSoulsLeft={state?.souls_left ?? null}
+      initialHeroImagePath={state?.hero_image_path ?? null}
+      supabaseUrl={supabaseUrl}
     />
   )
 }

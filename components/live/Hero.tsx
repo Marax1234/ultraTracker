@@ -21,8 +21,34 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
   const totalKm = (lapNumber * LAP_DISTANCE_KM).toFixed(1)
   const raceStartedAt = runnerState?.race_started_at ?? RACE_START_AT.toISOString()
 
+  const heroImageUrl = runnerState?.hero_image_path
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/lap-photos/${runnerState.hero_image_path}`
+    : null
+
   return (
     <section className="relative min-h-[100svh] flex flex-col bg-[#0a0a0a] overflow-hidden select-none">
+      {/* Crew photo — full-bleed background */}
+      {heroImageUrl && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={heroImageUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            style={{ opacity: 0.35 }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(10,10,10,0.6) 0%, rgba(10,10,10,0.3) 40%, rgba(10,10,10,0.75) 80%, rgba(10,10,10,0.95) 100%)",
+            }}
+          />
+        </>
+      )}
+
       {/* Subtle grid texture */}
       <div
         aria-hidden

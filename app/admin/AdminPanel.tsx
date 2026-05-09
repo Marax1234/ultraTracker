@@ -1,7 +1,7 @@
 "use client"
 
 import { useTransition, useState, useRef, useEffect } from "react"
-import { logLap, setStatus, setRaceStart, startRaceNow, setSoulsLeft, adjustSoulsLeft } from "./actions"
+import { logLap, setStatus, setRaceStart, startRaceNow, setSoulsLeft, adjustSoulsLeft, setHeroImage, clearHeroImage } from "./actions"
 import { FEELING_MAP } from "@/lib/utils/feeling"
 import { compressPhoto } from "@/lib/utils/photo-compress"
 import type { Enums } from "@/lib/supabase/database.types"
@@ -12,6 +12,8 @@ interface Props {
   nextLapNumber: number
   raceStartedAt: string
   initialSoulsLeft: number | null
+  initialHeroImagePath: string | null
+  supabaseUrl: string
 }
 
 function toDatetimeLocal(isoString: string): string {
@@ -20,7 +22,7 @@ function toDatetimeLocal(isoString: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function AdminPanel({ nextLapNumber, raceStartedAt, initialSoulsLeft }: Props) {
+export default function AdminPanel({ nextLapNumber, raceStartedAt, initialSoulsLeft, initialHeroImagePath, supabaseUrl }: Props) {
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -29,6 +31,14 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt, initialSoulsL
   const [optimisticLap, setOptimisticLap] = useState(nextLapNumber)
   const [optimisticSouls, setOptimisticSouls] = useState<number | null>(initialSoulsLeft)
   const soulsInputRef = useRef<HTMLInputElement>(null)
+  const [heroImagePath, setHeroImagePath] = useState<string | null>(initialHeroImagePath)
+  const [heroPreview, setHeroPreview] = useState<string | null>(null)
+  const [selectedHeroFile, setSelectedHeroFile] = useState<File | null>(null)
+  const heroFileInputRef = useRef<HTMLInputElement>(null)
+
+  const heroImageUrl = heroImagePath
+    ? `${supabaseUrl}/storage/v1/object/public/lap-photos/${heroImagePath}`
+    : null
   const [selectedFeeling, setSelectedFeeling] = useState<LapFeeling | null>(null)
   const [optimisticRaceStart, setOptimisticRaceStart] = useState(raceStartedAt)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -527,6 +537,146 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt, initialSoulsL
             Setzen
           </button>
         </form>
+      </div>
+
+      {/* Crew Foto */}
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+        <p style={{
+          fontFamily: "var(--font-display)", fontSize: "0.65rem", fontWeight: 700,
+          letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)",
+          margin: 0,
+        }}>
+          📸 Crew-Foto (Live-View)
+        </p>
+
+        {/* Current image preview */}
+        {(heroPreview ?? heroImageUrl) && (
+          <div style={{ position: "relative", width: "100%", borderRadius: "0.375rem", overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroPreview ?? heroImageUrl!}
+              alt="Crew Foto Vorschau"
+              style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", display: "block" }}
+            />
+            <div style={{
+              position: "absolute", top: "0.5rem", right: "0.5rem",
+              fontFamily: "var(--font-mono)", fontSize: "8px",
+              letterSpacing: "0.2em", textTransform: "uppercase",
+              background: "rgba(0,0,0,0.6)", color: "rgba(255,255,255,0.5)",
+              padding: "0.2rem 0.5rem", borderRadius: "2px",
+            }}>
+              {heroPreview ? "Vorschau" : "Aktuell"}
+            </div>
+          </div>
+        )}
+
+        {/* File picker */}
+        <div>
+          <input
+            ref={heroFileInputRef}
+            id="hero-photo-input"
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null
+              setSelectedHeroFile(file)
+              if (file) {
+                const url = URL.createObjectURL(file)
+                setHeroPreview(url)
+              } else {
+                setHeroPreview(null)
+              }
+            }}
+            style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+          />
+          <label
+            htmlFor="hero-photo-input"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+              padding: "0.75rem", width: "100%", boxSizing: "border-box", minHeight: "48px",
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "0.375rem", cursor: "pointer",
+              fontFamily: "var(--font-display)", fontSize: "0.8rem", fontWeight: 700,
+              letterSpacing: "0.05em", textTransform: "uppercase",
+              color: selectedHeroFile ? "var(--accent)" : "rgba(255,255,255,0.4)",
+            }}
+          >
+            {selectedHeroFile ? `✓ ${selectedHeroFile.name}` : "Bild auswählen …"}
+          </label>
+        </div>
+
+        {/* Upload + Clear row */}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            type="button"
+            disabled={isActionPending || !selectedHeroFile}
+            onClick={() => {
+              if (isActionPending || !selectedHeroFile) return
+              startTransition(async () => {
+                try {
+                  const compressed = await compressPhoto(selectedHeroFile)
+                  const fd = new FormData()
+                  fd.set("hero_image", compressed, selectedHeroFile.name)
+                  const result = await setHeroImage(fd)
+                  if (result?.error) {
+                    showToast("error", result.error)
+                  } else {
+                    showToast("success", "Foto gesetzt ✓")
+                    setSelectedHeroFile(null)
+                    setHeroPreview(null)
+                    if (heroFileInputRef.current) heroFileInputRef.current.value = ""
+                    // path will update on next server render; keep preview until then
+                    setHeroImagePath("pending")
+                  }
+                } catch {
+                  showToast("error", "Upload fehlgeschlagen")
+                }
+              })
+            }}
+            style={{
+              flex: 1, minHeight: "48px", padding: "0.75rem",
+              background: (!selectedHeroFile || isActionPending) ? "rgba(184,255,87,0.08)" : "rgba(184,255,87,0.18)",
+              border: "1px solid rgba(184,255,87,0.25)", borderRadius: "0.375rem",
+              cursor: (!selectedHeroFile || isActionPending) ? "not-allowed" : "pointer",
+              fontFamily: "var(--font-display)", fontSize: "0.8rem",
+              fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+              color: (!selectedHeroFile || isActionPending) ? "rgba(184,255,87,0.3)" : "var(--accent)",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            {isActionPending ? "⏳ …" : "Hochladen"}
+          </button>
+
+          {(heroImagePath || heroPreview) && (
+            <button
+              type="button"
+              disabled={isActionPending}
+              onClick={() => {
+                if (isActionPending) return
+                startTransition(async () => {
+                  await clearHeroImage()
+                  setHeroImagePath(null)
+                  setHeroPreview(null)
+                  setSelectedHeroFile(null)
+                  if (heroFileInputRef.current) heroFileInputRef.current.value = ""
+                  showToast("success", "Foto entfernt ✓")
+                })
+              }}
+              style={{
+                minHeight: "48px", padding: "0.75rem 1rem",
+                background: "rgba(239,68,68,0.06)",
+                border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.375rem",
+                cursor: isActionPending ? "not-allowed" : "pointer",
+                fontFamily: "var(--font-display)", fontSize: "0.8rem",
+                fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase",
+                color: "rgba(239,68,68,0.6)",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              Entfernen
+            </button>
+          )}
+        </div>
       </div>
 
     </div>
