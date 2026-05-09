@@ -4,7 +4,6 @@ import { useTransition, useState, useRef, useEffect } from "react"
 import { logLap, setStatus, setRaceStart, startRaceNow } from "./actions"
 import { FEELING_MAP } from "@/lib/utils/feeling"
 import { compressPhoto } from "@/lib/utils/photo-compress"
-import { LAP_DURATION_MINUTES } from "@/lib/config"
 import type { Enums } from "@/lib/supabase/database.types"
 
 type LapFeeling = Enums<"lap_feeling">
@@ -41,7 +40,7 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
   }
 
   const handleDone = () => {
-    if (isActionPending || !raceHasStarted) return
+    if (isActionPending) return
     const fd = new FormData()
     fd.set("status", "done")
     startTransition(async () => {
@@ -124,16 +123,10 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
   }, [])
 
   const raceStartMs = new Date(optimisticRaceStart).getTime()
-  const slotMs = LAP_DURATION_MINUTES * 60 * 1000
   const raceHasStarted = now >= raceStartMs
-  const lapUnlockMs = raceStartMs + (optimisticLap - 1) * slotMs
-  const lapAllowed = now >= lapUnlockMs
-
   const lapBlockReason = !raceHasStarted
     ? `Start: ${new Date(raceStartMs).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`
-    : !lapAllowed
-      ? `Freischaltung: ${new Date(lapUnlockMs).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`
-      : null
+    : null
 
   const isActionPending = isPending || submittingRef.current
   const isDisabled = isActionPending
@@ -353,15 +346,15 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
         {/* Submit */}
         <button
           type="submit"
-          disabled={isActionPending || !lapAllowed || !raceHasStarted}
+          disabled={isActionPending || !raceHasStarted}
           style={{
             width: "100%", minHeight: "68px", padding: "1rem",
-            background: (isActionPending || !lapAllowed || !raceHasStarted)
+            background: (isActionPending || !raceHasStarted)
               ? "rgba(184,255,87,0.15)"
               : "var(--accent)",
             border: lapBlockReason ? "1px solid rgba(184,255,87,0.2)" : "none",
             borderRadius: "0.5rem",
-            cursor: (isActionPending || !lapAllowed || !raceHasStarted) ? "not-allowed" : "pointer",
+            cursor: (isActionPending || !raceHasStarted) ? "not-allowed" : "pointer",
             fontFamily: "var(--font-display)",
             fontSize: lapBlockReason ? "clamp(0.75rem, 3vw, 0.9rem)" : "clamp(1.1rem, 5vw, 1.4rem)",
             fontWeight: 900, fontStyle: "italic", letterSpacing: "0.04em",
@@ -382,7 +375,7 @@ export default function AdminPanel({ nextLapNumber, raceStartedAt }: Props) {
       {/* Race over */}
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
         <button
-          disabled={isActionPending || !raceHasStarted}
+          disabled={isActionPending}
           onClick={handleDone}
           style={{
             width: "100%", minHeight: "52px", padding: "0.75rem",

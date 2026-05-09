@@ -11,14 +11,6 @@ export async function setStatus(formData: FormData) {
   await requireAdmin()
   const status = formData.get("status") as Enums<"runner_status">
 
-  if (status === "done") {
-    const admin = createAdminClient()
-    const { data: state } = await admin.from("runner_state").select("race_started_at").eq("id", 1).single()
-    if (state && Date.now() < new Date(state.race_started_at).getTime()) {
-      return
-    }
-  }
-
   const admin = createAdminClient()
   await admin
     .from("runner_state")
@@ -90,15 +82,6 @@ export async function logLap(formData: FormData): Promise<LogLapResult> {
       hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin",
     })
     return { error: `Rennen startet erst um ${startTime} Uhr` }
-  }
-
-  // Guard: lap N can only be logged once its hour-slot has started (T0 + (N-1)*60min)
-  const unlockMs = raceStartMs + (lap_number - 1) * slotMs
-  if (now < unlockMs) {
-    const unlockTime = new Date(unlockMs).toLocaleString("de-DE", {
-      hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin",
-    })
-    return { error: `Runde ${lap_number} erst ab ${unlockTime} Uhr möglich` }
   }
 
   const started_at = new Date(raceStartMs + (lap_number - 1) * slotMs).toISOString()
