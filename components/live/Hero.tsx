@@ -16,6 +16,7 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
   const { emoji, label, color } = getStatusInfo(status)
   const lapNumber = runnerState?.current_lap ?? 0
   const hasStarted = lapNumber > 0
+  const displayRound = status === "done" ? lapNumber : lapNumber + 1
   const totalKm = (lapNumber * LAP_DISTANCE_KM).toFixed(1)
   const raceStartedAt = runnerState?.race_started_at ?? RACE_START_AT.toISOString()
 
@@ -57,7 +58,7 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
             Runde
           </p>
           <div
-            aria-label={`Runde ${lapNumber}`}
+            aria-label={`Runde ${displayRound}`}
             style={{
               fontSize: "clamp(9rem, 32vw, 20rem)",
               lineHeight: 0.82,
@@ -69,7 +70,7 @@ export function Hero({ runnerState, lastStartedAt, connectionStatus }: Props) {
               letterSpacing: "-0.03em",
             }}
           >
-            {hasStarted ? lapNumber : "—"}
+            {hasStarted ? displayRound : "—"}
           </div>
         </div>
 
