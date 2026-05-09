@@ -1,7 +1,7 @@
-# Handoff — Sprint 3 abgeschlossen
+# Handoff — Sprint 4 abgeschlossen
 
 ## Projekt
-**Last One Standing Augsburg** — Backyard Ultra Live-Tracker. Freunde verfolgen Kilian in Echtzeit; Crew vor Ort pflegt Daten per Smartphone-Admin-Panel (Sprint 3).
+**Last One Standing Augsburg** — Backyard Ultra Live-Tracker. Freunde verfolgen Kilian in Echtzeit; Crew vor Ort pflegt Daten per Smartphone-Admin-Panel (Sprint 4 fertig).
 
 ## Was fertig ist
 
@@ -19,12 +19,11 @@
 ### Sprint 3 — Admin-Authentifizierung
 - **Auth-Layer** komplett ohne Supabase Auth: `ADMIN_PASSWORD` (env) + signiertes HTTP-Only-Cookie `bua_admin`
 - **`jose` 6.x** für JWT (HS256, 24 h TTL, `SESSION_SECRET`-signiert)
-- **`proxy.ts`** (Next.js 16 Proxy — früher `middleware.ts`): schützt alle `/admin/*`-Routen außer `/admin/login`; bei gültigem Cookie auf Login → Redirect zu `/admin`
+- **`proxy.ts`** (Next.js 16 Proxy): schützt alle `/admin/*`-Routen außer `/admin/login`; bei gültigem Cookie auf Login → Redirect zu `/admin`
 - **API-Route `/api/admin/login`** (POST): timing-safe Compare (`crypto.timingSafeEqual`), Rate-Limit (5 Versuche / 60 s per IP, In-Memory), Cookie setzen
 - **API-Route `/api/admin/logout`** (POST): Cookie löschen → Redirect `/admin/login`
 - **Login-Seite `/admin/login`**: Race-Ops Terminal Stil, Barlow Condensed, fehlerspezifische Messages (`?error=invalid`, `?error=rate_limit`)
 - **Admin-Layout** (`app/admin/layout.tsx`): sticky Header "Crew Panel" + Logout-Button
-- **Stub-Dashboard** `/admin`: Platzhalter für Sprint 4
 
 ### Sprint 2 — Public Live View
 - **Öffentliche Startseite** `/` — vollständig implementiert, kein Admin-Zugang nötig
@@ -35,14 +34,38 @@
 - **Connection-Indikator**: grüner Dot (Live) / gelb bei Verbindungsfehler
 - **Event-Konstanten** in `lib/config.ts`: Runner-Name, Event-Name, Race-Start, Rundenparameter
 
-## Datenbankschema (Supabase, 8 Migrationen)
+### Sprint 4 — Admin-Panel: Runden-Logging, Status, Notiz, Foto-Upload
+- **`app/admin/page.tsx`** (Server Component, `force-dynamic`): lädt `runner_state` + letzten Lap, berechnet `nextLapNumber`, rendert `AdminPanel`
+- **`app/admin/AdminPanel.tsx`** (Client Component): vollständige Admin-UI mit optimistischem State (`useTransition`)
+  - 4 Status-Buttons (2×2 Grid, ≥64 px, aktiver Status hervorgehoben)
+  - Notiz-Textarea (max. 280 Zeichen)
+  - Foto-Picker (max. 5 Fotos, `accept="image/*" capture="environment"`)
+  - Riesiger Primary-Button „Runde X abschließen" (≥68 px, Akzentfarbe), Doppel-Tap-Schutz
+  - Toast-Banner (Success/Error, 3,5 s Autohide)
+  - Collapsible Race-Start-Editor (verschiebbarer offizieller Starttermin)
+- **`app/admin/actions.ts`** — Server Actions (alle mit `requireAdmin()`-Guard):
+  - `logLap(formData)` — berechnet Lap-Nummer und `started_at` nach Backyard-Stundenraster, inserted `laps`-Row (ohne `duration_seconds` — generated column), updated `runner_state.current_lap`, lädt Fotos in Storage hoch, inserted `photos`-Rows; Foto-Fehler brechen Lap-Log nicht ab
+  - `setStatus(formData)` — updated `runner_state.current_status`
+  - `setRaceStart(formData)` — updated `runner_state.race_started_at` (Crew kann Startzeit nach hinten schieben)
+- **`lib/auth.ts`** erweitert: `requireAdmin()` — liest `bua_admin`-Cookie, verifiziert JWT, redirectet zu `/admin/login` bei Fehler
+- **`lib/utils/photo-compress.ts`** — `compressPhoto()` via `browser-image-compression` (≤500 KB, ≤1280 px, WebWorker)
+- **Schemaänderung** (Migration `add_race_started_at`): neue Spalte `runner_state.race_started_at timestamptz`, Default `2026-05-09T13:00:00Z` (= 15:00 CEST)
+- **`browser-image-compression 2.0.2`** als neue Dependency
+
+## Lap-Berechnung (Backyard-Stundenraster)
+- `lap_number` = letzter `laps.lap_number` + 1
+- `started_at` = `race_started_at + (lap_number − 1) × 60 min`
+- `completed_at` = `now()`
+- `duration_seconds` wird von Postgres als generated column automatisch berechnet
+
+## Datenbankschema (Supabase, 9 Migrationen)
 
 ### Tabellen
 
 | Tabelle | Zweck | Besonderheiten |
 |---|---|---|
 | `laps` | Eine Runde pro Eintrag | `duration_seconds` generated column (auto aus `completed_at - started_at`) |
-| `runner_state` | Aktueller Zustand des Läufers | Single-Row (id = 1), `updated_at`-Trigger |
+| `runner_state` | Aktueller Zustand des Läufers | Single-Row (id = 1), `updated_at`-Trigger, `race_started_at` für verschiebbaren Start |
 | `messages` | Nachrichten-Wand | Anon kann schreiben, CHECK auf Länge |
 | `photos` | Fotos pro Runde (1–5) | FK auf `laps` (cascade delete), Pfade in Storage |
 
@@ -61,7 +84,7 @@
 
 ### Storage
 - Public Bucket `lap-photos` (`public = true`)
-- Pfad-Konvention: `lap-{lap_number}-{timestamp}.jpg`
+- Pfad-Konvention: `lap-{lap_number}-{timestamp}-{idx}.jpg`
 - Kein Listing via API (Security); Public-URLs funktionieren direkt
 
 ## Projektstruktur
@@ -74,7 +97,9 @@ ultraTracker/
 │   ├── page.tsx                # Async Server Component — fetcht Initial-Daten, rendert LiveDashboard
 │   ├── admin/
 │   │   ├── layout.tsx          # Admin-Shell: sticky Header "Crew Panel" + Logout-Form
-│   │   ├── page.tsx            # Stub-Dashboard (Sprint 4)
+│   │   ├── page.tsx            # Server Component (force-dynamic): lädt State → AdminPanel
+│   │   ├── AdminPanel.tsx      # 'use client' — Status-Buttons, Notiz, Foto-Upload, Lap-Button
+│   │   ├── actions.ts          # Server Actions: logLap, setStatus, setRaceStart
 │   │   └── login/
 │   │       └── page.tsx        # Login-Formular (POST → /api/admin/login)
 │   └── api/admin/
@@ -89,16 +114,17 @@ ultraTracker/
 │   └── MessageWall.tsx         # Read-only Nachrichten-Wand
 ├── lib/
 │   ├── config.ts               # Konstanten: RUNNER_NAME, EVENT_NAME, RACE_START_AT, etc.
-│   ├── auth.ts                 # COOKIE_NAME, SESSION_TTL_SECONDS, signSession(), verifySession()
+│   ├── auth.ts                 # COOKIE_NAME, SESSION_TTL_SECONDS, signSession(), verifySession(), requireAdmin()
 │   ├── rate-limit.ts           # checkRateLimit(ip): In-Memory Sliding Window (5/60s)
 │   ├── utils/
 │   │   ├── time.ts             # getNextDeadline, formatCountdown, formatDuration
-│   │   └── status.ts           # runner_status → Emoji + Label + Farbe
+│   │   ├── status.ts           # runner_status → Emoji + Label + Farbe
+│   │   └── photo-compress.ts   # compressPhoto() via browser-image-compression
 │   └── supabase/
 │       ├── client.ts           # createBrowserClient<Database>
 │       ├── server.ts           # createServerClient<Database>
-│       ├── admin.ts            # Service-Role für Admin-Writes (Sprint 4)
-│       └── database.types.ts   # generierte DB-Types
+│       ├── admin.ts            # Service-Role für Admin-Writes
+│       └── database.types.ts   # generierte DB-Types (inkl. race_started_at)
 ├── proxy.ts                    # Next.js 16 Proxy: schützt /admin/*, außer /admin/login
 ├── .env.example                # Alle benötigten Var-Namen
 └── SPRINTS.md                  # Vollständiger Sprintplan
@@ -125,16 +151,6 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-
-## Nächster Sprint
-
-**Sprint 4 — Admin-UI** (`/admin`)
-- Runde loggen (1-Tap-Button) → INSERT in `laps` via Service-Role (`lib/supabase/admin.ts`)
-- Zustand setzen (4 Status-Buttons: `running` / `resting` / `struggling` / `done`) → UPDATE `runner_state`
-- Optionales Crew-Notiz-Feld (wird an `laps.note` gespeichert)
-- Foto-Upload (1–5 Fotos/Runde, Supabase Storage Bucket `lap-photos`, Pfad `lap-{lap_number}-{timestamp}.jpg`)
-- Smartphone-optimiert (große Touch-Targets, kein Scrollen beim Kernflow)
-
 ## Tech-Stack
 
-Next.js 16 · Tailwind v4 · TypeScript · Supabase (Postgres + Realtime + Storage) · Vercel · pnpm · jose · date-fns · lucide-react · Barlow Condensed (Google Fonts)
+Next.js 16 · Tailwind v4 · TypeScript · Supabase (Postgres + Realtime + Storage) · Vercel · pnpm · jose · date-fns · lucide-react · browser-image-compression · Barlow Condensed (Google Fonts)

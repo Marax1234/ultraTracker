@@ -99,18 +99,21 @@ export type Database = {
           current_lap: number
           current_status: Database["public"]["Enums"]["runner_status"]
           id: number
+          race_started_at: string
           updated_at: string
         }
         Insert: {
           current_lap?: number
           current_status?: Database["public"]["Enums"]["runner_status"]
           id?: number
+          race_started_at?: string
           updated_at?: string
         }
         Update: {
           current_lap?: number
           current_status?: Database["public"]["Enums"]["runner_status"]
           id?: number
+          race_started_at?: string
           updated_at?: string
         }
         Relationships: []

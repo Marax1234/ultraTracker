@@ -1,4 +1,6 @@
 import { SignJWT, jwtVerify } from "jose"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 
 export const COOKIE_NAME = "bua_admin"
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 // 24 h
@@ -23,5 +25,13 @@ export async function verifySession(token: string): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+export async function requireAdmin(): Promise<void> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get(COOKIE_NAME)?.value
+  if (!token || !(await verifySession(token))) {
+    redirect("/admin/login")
   }
 }
