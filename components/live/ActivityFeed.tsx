@@ -34,7 +34,7 @@ function LapCard({
     >
       <div className="flex items-baseline justify-between gap-4">
         <div className="flex items-baseline gap-2">
-          <span className="text-[9px] font-mono tracking-[0.4em] uppercase text-white/30">Runde</span>
+          <span className="text-[10px] font-mono tracking-[0.4em] uppercase text-white/50">Runde</span>
           <span
             className="text-xl font-bold tabular-nums"
             style={{ fontFamily: "var(--font-barlow-condensed), sans-serif" }}
@@ -62,12 +62,12 @@ function LapCard({
                 )
               })()}
               {lap.duration_seconds !== null && (
-                <span className="text-sm font-mono text-white/50 tabular-nums">
+                <span className="text-sm font-mono text-white/65 tabular-nums">
                   {formatDuration(lap.duration_seconds)}
                 </span>
               )}
               {lap.completed_at && (
-                <span className="text-[10px] font-mono text-white/25">
+                <span className="text-[10px] font-mono text-white/40">
                   {formatDistanceToNow(new Date(lap.completed_at), {
                     addSuffix: true,
                     locale: de,
@@ -80,7 +80,7 @@ function LapCard({
       </div>
 
       {lap.note && (
-        <p className="mt-2 text-sm text-white/45 leading-relaxed">{lap.note}</p>
+        <p className="mt-2 text-sm text-white/65 leading-relaxed">{lap.note}</p>
       )}
 
       {lap.photos.length > 0 && (
@@ -128,7 +128,7 @@ export function ActivityFeed({
   if (laps.length === 0) {
     return (
       <section className="px-5 py-14 flex justify-center">
-        <p className="text-[11px] font-mono tracking-widest uppercase text-white/20">
+        <p className="text-[11px] font-mono tracking-widest uppercase text-white/40">
           Noch keine Runden abgeschlossen
         </p>
       </section>
@@ -138,7 +138,7 @@ export function ActivityFeed({
   return (
     <>
       <section className="px-4 sm:px-6 py-8 max-w-2xl mx-auto w-full">
-        <h2 className="text-[9px] tracking-[0.45em] uppercase text-white/25 font-mono mb-5">
+        <h2 className="text-[10px] tracking-[0.45em] uppercase text-white/50 font-mono mb-5">
           Aktivitäten
         </h2>
         <div className="flex flex-col gap-3">
