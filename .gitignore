@@ -39,3 +39,40 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+# --- laptop backup defaults ---
+node_modules/
+.venv/
+venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.next/
+.parcel-cache/
+.gradle/
+coverage/
+target/
+*.class
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+.DS_Store
+.claude/settings.local.json
+_minted-*/
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.run.xml
+*.bcf
+*.blg
+*.toc
+__MACOSX/
+*:Zone.Identifier
+*Zone.Identifier

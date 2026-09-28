@@ -4,7 +4,16 @@
 
 Baue eine **Live Tracker Web-App** für einen Backyard Ultramarathon in Augsburg. Freunde des Läufers sollen seine Leistung in Echtzeit von zuhause verfolgen können. Die Crew vor Ort (nicht-technisch, Smartphone) pflegt die Daten über ein einfaches passwortgeschütztes Admin-Panel.
 
-**Backyard Ultra Regel**: Der Läufer muss jede Stunde eine fixe Runde (6,7 km) abschließen. Wer die Deadline verpasst, scheidet aus.
+**Backyard Ultra Regel**: Ein Backyard Ultra ist ein Ausscheidungsrennen im Laufen: Alle starten jede volle Stunde gemeinsam eine Runde von 6,706 km, und wer die Runde nicht innerhalb der Stunde schafft oder den nächsten Start verpasst, scheidet aus. Gewonnen hat am Ende nur die Person, die eine Runde mehr schafft als alle anderen; wenn niemand mehr eine weitere Runde beendet, gibt es keinen Sieger.
+
+So läuft es ab
+Jede Runde beginnt exakt zur vollen Stunde.
+
+Für eine Runde hast du maximal 60 Minuten Zeit.
+
+Läufst du früher ins Ziel, kannst du die Restzeit zum Essen, Trinken und Erholen nutzen.
+
+Das Rennen endet erst, wenn nur noch eine Person eine weitere Runde allein erfolgreich schafft.
 
 
 ## Zielgruppen
@@ -55,3 +64,5 @@ Baue eine **Live Tracker Web-App** für einen Backyard Ultramarathon in Augsburg
 - Nachrichten-Wand (Freunde können schreiben)
 - Mobil-optimiert (Smartphone-first für Admin)
 - Dark Mode als Standard
+
+Nutze immer falls sinnvoll die MCPs für SuperBase oder Vercel, wie auch den Doku Find Skill mit Context 7, und für jegliche Design Sachen den Frontend Design Skill. 
